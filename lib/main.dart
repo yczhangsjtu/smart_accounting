@@ -65,6 +65,16 @@ class _MainState extends State<Main> {
   bool filterResetPrecise = false;
   int filterTransactionType = -1;
 
+  TextEditingController? _updateFromAccountController;
+  TextEditingController? _updateFromAmountController;
+  TextEditingController? _updateToAccountController;
+  TextEditingController? _updateToAmountController;
+  TextEditingController? _updateCategoryController;
+  TextEditingController? _updateSubcategoryController;
+  TextEditingController? _updateCommentController;
+  TextEditingController? _updateResetController;
+  int updateTransactionType = 0;
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +99,15 @@ class _MainState extends State<Main> {
     _filterSubcategoryController?.addListener(_filterChangeListener);
     _filterCommentController?.addListener(_filterChangeListener);
     _filterResetController?.addListener(_filterChangeListener);
+
+    _updateFromAccountController = TextEditingController();
+    _updateFromAmountController = TextEditingController();
+    _updateToAccountController = TextEditingController();
+    _updateToAmountController = TextEditingController();
+    _updateCategoryController = TextEditingController();
+    _updateSubcategoryController = TextEditingController();
+    _updateCommentController = TextEditingController();
+    _updateResetController = TextEditingController();
   }
 
   void _filterChangeListener() {
@@ -156,6 +175,15 @@ class _MainState extends State<Main> {
     _filterSubcategoryController?.dispose();
     _filterCommentController?.dispose();
     _filterResetController?.dispose();
+
+    _updateFromAccountController?.dispose();
+    _updateFromAmountController?.dispose();
+    _updateToAccountController?.dispose();
+    _updateToAmountController?.dispose();
+    _updateCategoryController?.dispose();
+    _updateSubcategoryController?.dispose();
+    _updateCommentController?.dispose();
+    _updateResetController?.dispose();
     super.dispose();
   }
 
@@ -253,7 +281,7 @@ class _MainState extends State<Main> {
                   ? _buildAccountList()
                   : leftSideSelector == 1
                       ? _buildFilter()
-                      : Container()))
+                      : _buildUpdate()))
     ]);
   }
 
@@ -324,7 +352,7 @@ class _MainState extends State<Main> {
                       hintText: hint,
                       border: OutlineInputBorder(),
                       isCollapsed: true,
-                      contentPadding: EdgeInsets.all(4.0)))),
+                      contentPadding: EdgeInsets.all(8.0)))),
         ),
         Checkbox(
             value: value,
@@ -415,6 +443,107 @@ class _MainState extends State<Main> {
             })
       ],
     );
+  }
+
+  Widget _buildSingleUpdater(String hint, TextEditingController? controller,
+      void Function(Transaction? transaction) update, bool isNumber) {
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        Expanded(
+          child: Container(
+              padding: EdgeInsets.all(4.0),
+              child: TextField(
+                  controller: controller,
+                  inputFormatters: isNumber
+                      ? [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,2}'))
+                        ]
+                      : null,
+                  decoration: InputDecoration(
+                      hintText: hint,
+                      border: OutlineInputBorder(),
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.all(8.0)))),
+        ),
+        OutlinedButton(
+            child: Text("Update"),
+            onPressed: () {
+              setState(() {
+                for (int index in selected) {
+                  update(_accountData?.transactions[index]);
+                }
+              });
+            }),
+      ],
+    );
+  }
+
+  Widget _buildUpdate() {
+    return ListView(children: [
+      _buildSingleUpdater("Update From Account", _updateFromAccountController,
+          (transaction) {
+        transaction?.outAccount = _updateFromAccountController?.text ?? "";
+      }, false),
+      _buildSingleUpdater("Update From Amount", _updateFromAmountController,
+          (transaction) {
+        transaction?.outAmount =
+            (double.parse(_updateFromAmountController?.text ?? "0") * 100)
+                .round();
+      }, true),
+      _buildSingleUpdater("Update To Account", _updateToAccountController,
+          (transaction) {
+        transaction?.inAccount = _updateToAccountController?.text ?? "";
+      }, false),
+      _buildSingleUpdater("Update To Amount", _updateToAmountController,
+          (transaction) {
+        transaction?.inAmount =
+            (double.parse(_updateToAmountController?.text ?? "0") * 100)
+                .round();
+      }, true),
+      Row(
+        children: [
+          Expanded(
+            child: DropdownButton(
+                value: updateTransactionType,
+                items: [
+                  DropdownMenuItem(child: Text("Payment"), value: 0),
+                  DropdownMenuItem(child: Text("Receive"), value: 1),
+                  DropdownMenuItem(child: Text("Transfer"), value: 2),
+                  DropdownMenuItem(child: Text("Reset"), value: 3),
+                ],
+                onChanged: (value) {
+                  updateTransactionType = value as int? ?? 0;
+                }),
+          ),
+          OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  for (int index in selected) {
+                    _accountData?.transactions[index].entryType =
+                        updateTransactionType;
+                  }
+                });
+              },
+              child: Text("Update"))
+        ],
+      ),
+      _buildSingleUpdater("Category", _updateCategoryController, (transaction) {
+        transaction?.category = _updateCategoryController?.text ?? "";
+      }, false),
+      _buildSingleUpdater("Subcategory", _updateSubcategoryController,
+          (transaction) {
+        transaction?.subcategory = _updateSubcategoryController?.text ?? "";
+      }, false),
+      _buildSingleUpdater("Comment", _updateCommentController, (transaction) {
+        transaction?.comment = _updateCommentController?.text ?? "";
+      }, false),
+      _buildSingleUpdater("Reset", _updateResetController, (transaction) {
+        transaction?.resetTo =
+            (double.parse(_updateResetController?.text ?? "0") * 100).round();
+      }, true),
+    ]);
   }
 
   Widget _buildRightSide() {
