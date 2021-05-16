@@ -255,11 +255,18 @@ class _MainState extends State<Main> {
         Expanded(
           child: Align(
             alignment: Alignment.centerRight,
-            child: _buildOpenButton(),
+            child: _buildFileButtons(),
           ),
         )
       ],
     );
+  }
+
+  Widget _buildFileButtons() {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      _buildOpenButton(),
+      _buildSaveButton(),
+    ]);
   }
 
   Widget _buildOpenButton() {
@@ -273,7 +280,18 @@ class _MainState extends State<Main> {
         },
         child: Text("Open",
             style: TextStyle(
-              color: Colors.black,
+              color: Colors.white,
+            )));
+  }
+
+  Widget _buildSaveButton() {
+    return OutlinedButton(
+        onPressed: () {
+          saveAccountData(_accountData);
+        },
+        child: Text("Save",
+            style: TextStyle(
+              color: Colors.white,
             )));
   }
 
