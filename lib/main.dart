@@ -288,6 +288,7 @@ class _MainState extends State<Main> {
     return OutlinedButton(
         onPressed: () {
           saveAccountData(_accountData);
+          _refresh();
         },
         child: Text("Save",
             style: TextStyle(
