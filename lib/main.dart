@@ -195,6 +195,8 @@ class _MainState extends State<Main> {
   }
 
   void _refresh() {
+    sortTransactions(_accountData?.transactions);
+    _analyzedAccountData = analyze(_accountData);
     reverseSortTransactions(_accountData?.transactions);
     _updateFiltered();
   }
@@ -540,25 +542,21 @@ class _MainState extends State<Main> {
               child: Text("Update"))
         ],
       ),
-      _buildSingleUpdater("Update From Account", _updateFromAccountController,
+      _buildSingleUpdater("From Account", _updateFromAccountController,
           (transaction) {
         transaction?.outAccount = _updateFromAccountController?.text ?? "";
       }, false),
-      _buildSingleUpdater("Update From Amount", _updateFromAmountController,
+      _buildSingleUpdater("From Amount", _updateFromAmountController,
           (transaction) {
-        transaction?.outAmount =
-            (double.parse(_updateFromAmountController?.text ?? "0") * 100)
-                .round();
+        transaction?.outAmount = str2cents(_updateFromAmountController?.text);
       }, true),
-      _buildSingleUpdater("Update To Account", _updateToAccountController,
+      _buildSingleUpdater("To Account", _updateToAccountController,
           (transaction) {
         transaction?.inAccount = _updateToAccountController?.text ?? "";
       }, false),
-      _buildSingleUpdater("Update To Amount", _updateToAmountController,
+      _buildSingleUpdater("To Amount", _updateToAmountController,
           (transaction) {
-        transaction?.inAmount =
-            (double.parse(_updateToAmountController?.text ?? "0") * 100)
-                .round();
+        transaction?.inAmount = str2cents(_updateToAmountController?.text);
       }, true),
       Container(
         padding: EdgeInsets.only(left: 2.0, right: 2.0),
@@ -602,24 +600,108 @@ class _MainState extends State<Main> {
         transaction?.comment = _updateCommentController?.text ?? "";
       }, false),
       _buildSingleUpdater("Reset", _updateResetController, (transaction) {
-        transaction?.resetTo =
-            (double.parse(_updateResetController?.text ?? "0") * 100).round();
+        transaction?.resetTo = str2cents(_updateResetController?.text);
       }, true),
-      TextButton(
-          child: Text("Clear"),
-          onPressed: () {
-            updateDate = DateTime.now();
-            updateTime = TimeOfDay.now();
-            _updateFromAccountController?.text = "";
-            _updateFromAmountController?.text = "";
-            _updateToAccountController?.text = "";
-            _updateToAmountController?.text = "";
-            _updateCategoryController?.text = "";
-            _updateSubcategoryController?.text = "";
-            _updateCommentController?.text = "";
-            _updateResetController?.text = "";
-            setState(() {});
-          })
+      Wrap(
+        children: [
+          TextButton(
+              child: Text("Now"),
+              onPressed: () {
+                updateDate = DateTime.now();
+                updateTime = TimeOfDay.now();
+                setState(() {});
+              }),
+          TextButton(
+              child: Text("Create"),
+              onPressed: () {
+                final newTransaction = Transaction(
+                    "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}",
+                    updateTransactionType == 0 || updateTransactionType == 2
+                        ? _updateFromAccountController?.text ?? ""
+                        : "",
+                    updateTransactionType == 1 || updateTransactionType == 2
+                        ? _updateToAccountController?.text ?? ""
+                        : "",
+                    updateTransactionType == 0 || updateTransactionType == 2
+                        ? str2cents(_updateFromAmountController?.text)
+                        : 0,
+                    updateTransactionType == 1 || updateTransactionType == 2
+                        ? str2cents(_updateToAmountController?.text)
+                        : 0,
+                    updateTransactionType,
+                    _updateCategoryController?.text ?? "",
+                    _updateSubcategoryController?.text ?? "",
+                    _updateCommentController?.text ?? "",
+                    str2cents(_updateResetController?.text),
+                    "",
+                    DateTime.parse(
+                            "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}")
+                        .millisecondsSinceEpoch);
+                _accountData?.transactions.add(newTransaction);
+                _refresh();
+                setState(() {});
+              }),
+          TextButton(
+              child: Text("Clear"),
+              onPressed: () {
+                updateDate = DateTime.now();
+                updateTime = TimeOfDay.now();
+                _updateFromAccountController?.text = "";
+                _updateFromAmountController?.text = "";
+                _updateToAccountController?.text = "";
+                _updateToAmountController?.text = "";
+                _updateCategoryController?.text = "";
+                _updateSubcategoryController?.text = "";
+                _updateCommentController?.text = "";
+                _updateResetController?.text = "";
+                setState(() {});
+              }),
+          TextButton(
+            style: ButtonStyle(
+                foregroundColor:
+                    MaterialStateColor.resolveWith((states) => Colors.red)),
+            child: Text("Delete"),
+            onPressed: selected.isEmpty
+                ? null
+                : () async {
+                    bool doDelete = await showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: Text("Warning"),
+                            content: Text(
+                                "Are your sure to delete ${selected.length} transactions?",
+                                style: TextStyle(color: Colors.red)),
+                            actions: [
+                              TextButton(
+                                  child: Text("Yes"),
+                                  onPressed: () {
+                                    Navigator.of(context).pop(true);
+                                  }),
+                              TextButton(
+                                  child: Text("Cancel"),
+                                  onPressed: () {
+                                    Navigator.of(context).pop(false);
+                                  }),
+                            ],
+                          );
+                        });
+                    if (!doDelete) return;
+                    List<Transaction> newTransactions = [];
+                    for (int i = 0;
+                        i < (_accountData?.transactions.length ?? 0);
+                        i++) {
+                      if (!selected.contains(i)) {
+                        newTransactions.add(_accountData!.transactions[i]);
+                      }
+                    }
+                    _accountData?.transactions = newTransactions;
+                    _refresh();
+                    setState(() {});
+                  },
+          )
+        ],
+      )
     ]);
   }
 

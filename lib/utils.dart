@@ -44,8 +44,8 @@ int transactionTypeFromString(value) {
   }
 }
 
-void sortTransactions(List<Transaction> transactions) {
-  transactions.sort((a, b) {
+void sortTransactions(List<Transaction>? transactions) {
+  transactions?.sort((a, b) {
     if (a.timestamp < b.timestamp) return -1;
     if (a.timestamp > b.timestamp) return 1;
     if (a.outAccount.compareTo(b.outAccount) < 0) return -1;
@@ -244,6 +244,13 @@ List<int> filter(List<Filter> filters, List<Transaction>? transactions) {
     if (any) result.add(i);
   }
   return result;
+}
+
+int str2cents(String? s) {
+  if (s?.trim().isEmpty ?? true) {
+    return 0;
+  }
+  return ((double.tryParse(s ?? "0") ?? 0) * 100).round();
 }
 
 String formatDate(DateTime date) => new DateFormat("yyyy-MM-dd").format(date);
