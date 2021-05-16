@@ -490,58 +490,175 @@ class _MainState extends State<Main> {
     );
   }
 
-  Widget _buildUpdate() {
-    return ListView(children: [
-      Row(
+  Widget _buildDeleteButton() {
+    return TextButton(
+      style: ButtonStyle(
+          foregroundColor:
+              MaterialStateColor.resolveWith((states) => Colors.red)),
+      child: Text("Delete"),
+      onPressed: selected.isEmpty
+          ? null
+          : () async {
+              bool doDelete = await showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text("Warning"),
+                      content: Text(
+                          "Are your sure to delete ${selected.length} transactions?",
+                          style: TextStyle(color: Colors.red)),
+                      actions: [
+                        TextButton(
+                            child: Text("Yes"),
+                            onPressed: () {
+                              Navigator.of(context).pop(true);
+                            }),
+                        TextButton(
+                            child: Text("Cancel"),
+                            onPressed: () {
+                              Navigator.of(context).pop(false);
+                            }),
+                      ],
+                    );
+                  });
+              if (!doDelete) return;
+              List<Transaction> newTransactions = [];
+              for (int i = 0;
+                  i < (_accountData?.transactions.length ?? 0);
+                  i++) {
+                if (!selected.contains(i)) {
+                  newTransactions.add(_accountData!.transactions[i]);
+                }
+              }
+              _accountData?.transactions = newTransactions;
+              _refresh();
+              setState(() {});
+            },
+    );
+  }
+
+  Widget _buildCreateButton() {
+    return TextButton(
+        child: Text("Create"),
+        onPressed: () {
+          final newTransaction = Transaction(
+              "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}",
+              updateTransactionType == 0 || updateTransactionType == 2
+                  ? _updateFromAccountController?.text ?? ""
+                  : "",
+              updateTransactionType == 1 || updateTransactionType == 2
+                  ? _updateToAccountController?.text ?? ""
+                  : "",
+              updateTransactionType == 0 || updateTransactionType == 2
+                  ? str2cents(_updateFromAmountController?.text)
+                  : 0,
+              updateTransactionType == 1 || updateTransactionType == 2
+                  ? str2cents(_updateToAmountController?.text)
+                  : 0,
+              updateTransactionType,
+              _updateCategoryController?.text ?? "",
+              _updateSubcategoryController?.text ?? "",
+              _updateCommentController?.text ?? "",
+              str2cents(_updateResetController?.text),
+              "",
+              DateTime.parse(
+                      "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}")
+                  .millisecondsSinceEpoch);
+          _accountData?.transactions.add(newTransaction);
+          _refresh();
+          setState(() {});
+        });
+  }
+
+  Widget _buildTimeSelector() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 10,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: TextButton(
+                child: Text(formatDate(updateDate)),
+                onPressed: () async {
+                  updateDate = await showDatePicker(
+                          context: context,
+                          initialDate: updateDate,
+                          firstDate: DateTime(1970),
+                          lastDate: DateTime(9999, 12, 31)) ??
+                      DateTime.now();
+                  setState(() {});
+                }),
+          ),
+        ),
+        Container(width: 2.0),
+        Expanded(
+          flex: 8,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: TextButton(
+                child: Text(formatTimeOfDay(updateTime)),
+                onPressed: () async {
+                  updateTime = await showTimePicker(
+                          context: context, initialTime: updateTime) ??
+                      TimeOfDay(hour: 0, minute: 0);
+                  setState(() {});
+                }),
+          ),
+        ),
+        OutlinedButton(
+            onPressed: () {
+              setState(() {
+                for (int index in selected) {
+                  _accountData?.transactions[index].time =
+                      "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}";
+                  _accountData?.transactions[index].timestamp = DateTime.parse(
+                          _accountData?.transactions[index].time ?? "")
+                      .millisecondsSinceEpoch;
+                }
+              });
+            },
+            child: Text("Update"))
+      ],
+    );
+  }
+
+  Widget _buildTransactionTypeSelector() {
+    return Container(
+      padding: EdgeInsets.only(left: 2.0, right: 2.0),
+      child: Row(
         children: [
           Expanded(
-            flex: 10,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: TextButton(
-                  child: Text(formatDate(updateDate)),
-                  onPressed: () async {
-                    updateDate = await showDatePicker(
-                            context: context,
-                            initialDate: updateDate,
-                            firstDate: DateTime(1970),
-                            lastDate: DateTime(9999, 12, 31)) ??
-                        DateTime.now();
-                    setState(() {});
-                  }),
-            ),
-          ),
-          Container(width: 2.0),
-          Expanded(
-            flex: 8,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: TextButton(
-                  child: Text(formatTimeOfDay(updateTime)),
-                  onPressed: () async {
-                    updateTime = await showTimePicker(
-                            context: context, initialTime: updateTime) ??
-                        TimeOfDay(hour: 0, minute: 0);
-                    setState(() {});
-                  }),
-            ),
+            child: DropdownButton(
+                value: updateTransactionType,
+                items: [
+                  DropdownMenuItem(child: Text("Payment"), value: 0),
+                  DropdownMenuItem(child: Text("Receive"), value: 1),
+                  DropdownMenuItem(child: Text("Transfer"), value: 2),
+                  DropdownMenuItem(child: Text("Reset"), value: 3),
+                ],
+                onChanged: (value) {
+                  updateTransactionType = value as int? ?? 0;
+                  setState(() {});
+                }),
           ),
           OutlinedButton(
               onPressed: () {
                 setState(() {
                   for (int index in selected) {
-                    _accountData?.transactions[index].time =
-                        "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}";
-                    _accountData?.transactions[index].timestamp =
-                        DateTime.parse(
-                                _accountData?.transactions[index].time ?? "")
-                            .millisecondsSinceEpoch;
+                    _accountData?.transactions[index].entryType =
+                        updateTransactionType;
                   }
                 });
               },
               child: Text("Update"))
         ],
       ),
+    );
+  }
+
+  Widget _buildUpdate() {
+    return ListView(children: [
+      _buildTimeSelector(),
       _buildSingleUpdater("From Account", _updateFromAccountController,
           (transaction) {
         transaction?.outAccount = _updateFromAccountController?.text ?? "";
@@ -558,37 +675,7 @@ class _MainState extends State<Main> {
           (transaction) {
         transaction?.inAmount = str2cents(_updateToAmountController?.text);
       }, true),
-      Container(
-        padding: EdgeInsets.only(left: 2.0, right: 2.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: DropdownButton(
-                  value: updateTransactionType,
-                  items: [
-                    DropdownMenuItem(child: Text("Payment"), value: 0),
-                    DropdownMenuItem(child: Text("Receive"), value: 1),
-                    DropdownMenuItem(child: Text("Transfer"), value: 2),
-                    DropdownMenuItem(child: Text("Reset"), value: 3),
-                  ],
-                  onChanged: (value) {
-                    updateTransactionType = value as int? ?? 0;
-                    setState(() {});
-                  }),
-            ),
-            OutlinedButton(
-                onPressed: () {
-                  setState(() {
-                    for (int index in selected) {
-                      _accountData?.transactions[index].entryType =
-                          updateTransactionType;
-                    }
-                  });
-                },
-                child: Text("Update"))
-          ],
-        ),
-      ),
+      _buildTransactionTypeSelector(),
       _buildSingleUpdater("Category", _updateCategoryController, (transaction) {
         transaction?.category = _updateCategoryController?.text ?? "";
       }, false),
@@ -611,36 +698,7 @@ class _MainState extends State<Main> {
                 updateTime = TimeOfDay.now();
                 setState(() {});
               }),
-          TextButton(
-              child: Text("Create"),
-              onPressed: () {
-                final newTransaction = Transaction(
-                    "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}",
-                    updateTransactionType == 0 || updateTransactionType == 2
-                        ? _updateFromAccountController?.text ?? ""
-                        : "",
-                    updateTransactionType == 1 || updateTransactionType == 2
-                        ? _updateToAccountController?.text ?? ""
-                        : "",
-                    updateTransactionType == 0 || updateTransactionType == 2
-                        ? str2cents(_updateFromAmountController?.text)
-                        : 0,
-                    updateTransactionType == 1 || updateTransactionType == 2
-                        ? str2cents(_updateToAmountController?.text)
-                        : 0,
-                    updateTransactionType,
-                    _updateCategoryController?.text ?? "",
-                    _updateSubcategoryController?.text ?? "",
-                    _updateCommentController?.text ?? "",
-                    str2cents(_updateResetController?.text),
-                    "",
-                    DateTime.parse(
-                            "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}")
-                        .millisecondsSinceEpoch);
-                _accountData?.transactions.add(newTransaction);
-                _refresh();
-                setState(() {});
-              }),
+          _buildCreateButton(),
           TextButton(
               child: Text("Clear"),
               onPressed: () {
@@ -656,50 +714,7 @@ class _MainState extends State<Main> {
                 _updateResetController?.text = "";
                 setState(() {});
               }),
-          TextButton(
-            style: ButtonStyle(
-                foregroundColor:
-                    MaterialStateColor.resolveWith((states) => Colors.red)),
-            child: Text("Delete"),
-            onPressed: selected.isEmpty
-                ? null
-                : () async {
-                    bool doDelete = await showDialog(
-                        context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            title: Text("Warning"),
-                            content: Text(
-                                "Are your sure to delete ${selected.length} transactions?",
-                                style: TextStyle(color: Colors.red)),
-                            actions: [
-                              TextButton(
-                                  child: Text("Yes"),
-                                  onPressed: () {
-                                    Navigator.of(context).pop(true);
-                                  }),
-                              TextButton(
-                                  child: Text("Cancel"),
-                                  onPressed: () {
-                                    Navigator.of(context).pop(false);
-                                  }),
-                            ],
-                          );
-                        });
-                    if (!doDelete) return;
-                    List<Transaction> newTransactions = [];
-                    for (int i = 0;
-                        i < (_accountData?.transactions.length ?? 0);
-                        i++) {
-                      if (!selected.contains(i)) {
-                        newTransactions.add(_accountData!.transactions[i]);
-                      }
-                    }
-                    _accountData?.transactions = newTransactions;
-                    _refresh();
-                    setState(() {});
-                  },
-          )
+          _buildDeleteButton(),
         ],
       )
     ]);
