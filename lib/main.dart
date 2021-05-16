@@ -285,7 +285,7 @@ class _MainState extends State<Main> {
       ),
       Expanded(
           child: Container(
-              width: MediaQuery.of(context).size.width / 6,
+              width: max(MediaQuery.of(context).size.width / 6, 200),
               padding: EdgeInsets.all(4.0),
               child: leftSideSelector == 0
                   ? _buildAccountList()
