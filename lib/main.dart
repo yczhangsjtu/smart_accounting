@@ -65,6 +65,9 @@ class _MainState extends State<Main> {
   bool filterResetPrecise = false;
   int filterTransactionType = -1;
 
+  DateTime updateDate = DateTime.now();
+  TimeOfDay updateTime = TimeOfDay.now();
+
   TextEditingController? _updateFromAccountController;
   TextEditingController? _updateFromAmountController;
   TextEditingController? _updateToAccountController;
@@ -191,6 +194,11 @@ class _MainState extends State<Main> {
     return (filtered.length - 1) ~/ pageSize;
   }
 
+  void _refresh() {
+    reverseSortTransactions(_accountData?.transactions);
+    _updateFiltered();
+  }
+
   void _updateFiltered() {
     filtered = filter(filters, _accountData?.transactions);
     selected = {};
@@ -270,13 +278,13 @@ class _MainState extends State<Main> {
   Widget _buildLeftSide() {
     return Column(mainAxisSize: MainAxisSize.max, children: [
       Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(4.0),
         child: _buildLeftSideTop(),
       ),
       Expanded(
           child: Container(
               width: MediaQuery.of(context).size.width / 6,
-              padding: EdgeInsets.all(8.0),
+              padding: EdgeInsets.all(4.0),
               child: leftSideSelector == 0
                   ? _buildAccountList()
                   : leftSideSelector == 1
@@ -452,7 +460,7 @@ class _MainState extends State<Main> {
       children: [
         Expanded(
           child: Container(
-              padding: EdgeInsets.all(4.0),
+              padding: EdgeInsets.all(2.0),
               child: TextField(
                   controller: controller,
                   inputFormatters: isNumber
@@ -482,6 +490,56 @@ class _MainState extends State<Main> {
 
   Widget _buildUpdate() {
     return ListView(children: [
+      Row(
+        children: [
+          Expanded(
+            flex: 10,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: TextButton(
+                  child: Text(formatDate(updateDate)),
+                  onPressed: () async {
+                    updateDate = await showDatePicker(
+                            context: context,
+                            initialDate: updateDate,
+                            firstDate: DateTime(1970),
+                            lastDate: DateTime(9999, 12, 31)) ??
+                        DateTime.now();
+                    setState(() {});
+                  }),
+            ),
+          ),
+          Container(width: 2.0),
+          Expanded(
+            flex: 8,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: TextButton(
+                  child: Text(formatTimeOfDay(updateTime)),
+                  onPressed: () async {
+                    updateTime = await showTimePicker(
+                            context: context, initialTime: updateTime) ??
+                        TimeOfDay(hour: 0, minute: 0);
+                    setState(() {});
+                  }),
+            ),
+          ),
+          OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  for (int index in selected) {
+                    _accountData?.transactions[index].time =
+                        "${formatDate(updateDate)} ${formatTimeOfDay(updateTime)}";
+                    _accountData?.transactions[index].timestamp =
+                        DateTime.parse(
+                                _accountData?.transactions[index].time ?? "")
+                            .millisecondsSinceEpoch;
+                  }
+                });
+              },
+              child: Text("Update"))
+        ],
+      ),
       _buildSingleUpdater("Update From Account", _updateFromAccountController,
           (transaction) {
         transaction?.outAccount = _updateFromAccountController?.text ?? "";
@@ -502,32 +560,36 @@ class _MainState extends State<Main> {
             (double.parse(_updateToAmountController?.text ?? "0") * 100)
                 .round();
       }, true),
-      Row(
-        children: [
-          Expanded(
-            child: DropdownButton(
-                value: updateTransactionType,
-                items: [
-                  DropdownMenuItem(child: Text("Payment"), value: 0),
-                  DropdownMenuItem(child: Text("Receive"), value: 1),
-                  DropdownMenuItem(child: Text("Transfer"), value: 2),
-                  DropdownMenuItem(child: Text("Reset"), value: 3),
-                ],
-                onChanged: (value) {
-                  updateTransactionType = value as int? ?? 0;
-                }),
-          ),
-          OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  for (int index in selected) {
-                    _accountData?.transactions[index].entryType =
-                        updateTransactionType;
-                  }
-                });
-              },
-              child: Text("Update"))
-        ],
+      Container(
+        padding: EdgeInsets.only(left: 2.0, right: 2.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: DropdownButton(
+                  value: updateTransactionType,
+                  items: [
+                    DropdownMenuItem(child: Text("Payment"), value: 0),
+                    DropdownMenuItem(child: Text("Receive"), value: 1),
+                    DropdownMenuItem(child: Text("Transfer"), value: 2),
+                    DropdownMenuItem(child: Text("Reset"), value: 3),
+                  ],
+                  onChanged: (value) {
+                    updateTransactionType = value as int? ?? 0;
+                    setState(() {});
+                  }),
+            ),
+            OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    for (int index in selected) {
+                      _accountData?.transactions[index].entryType =
+                          updateTransactionType;
+                    }
+                  });
+                },
+                child: Text("Update"))
+          ],
+        ),
       ),
       _buildSingleUpdater("Category", _updateCategoryController, (transaction) {
         transaction?.category = _updateCategoryController?.text ?? "";
@@ -543,6 +605,21 @@ class _MainState extends State<Main> {
         transaction?.resetTo =
             (double.parse(_updateResetController?.text ?? "0") * 100).round();
       }, true),
+      TextButton(
+          child: Text("Clear"),
+          onPressed: () {
+            updateDate = DateTime.now();
+            updateTime = TimeOfDay.now();
+            _updateFromAccountController?.text = "";
+            _updateFromAmountController?.text = "";
+            _updateToAccountController?.text = "";
+            _updateToAmountController?.text = "";
+            _updateCategoryController?.text = "";
+            _updateSubcategoryController?.text = "";
+            _updateCommentController?.text = "";
+            _updateResetController?.text = "";
+            setState(() {});
+          })
     ]);
   }
 
@@ -578,9 +655,11 @@ class _MainState extends State<Main> {
       spacing: 4.0,
       children: [
         OutlinedButton(
-          child: Text("New"),
+          child: Text("Refresh"),
           onPressed: () {
-            print("New");
+            setState(() {
+              _refresh();
+            });
           },
         ),
         OutlinedButton(

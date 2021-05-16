@@ -289,6 +289,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.0.0"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.17.0"
   io:
     dependency: transitive
     description:
@@ -409,12 +416,12 @@ packages:
     source: hosted
     version: "3.0.0"
   plugin_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: plugin_platform_interface
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.0.3"
+    version: "2.0.0"
   pool:
     dependency: transitive
     description:

@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import 'data.dart';
 
 String processMoney(int value) {
@@ -243,3 +245,16 @@ List<int> filter(List<Filter> filters, List<Transaction>? transactions) {
   }
   return result;
 }
+
+String formatDate(DateTime date) => new DateFormat("yyyy-MM-dd").format(date);
+String formatTime(DateTime date) => new DateFormat("HH:mm:ss").format(date);
+String formatTimeOfDay(TimeOfDay time) =>
+    "${time.hour}".padLeft(2, "0") +
+    ":" +
+    "${time.minute}".padLeft(2, "0") +
+    ":00";
+String formatDateTime(DateTime date) =>
+    new DateFormat("yyyy-MM-dd HH:mm:ss").format(date);
+String today() => formatDate(DateTime.now());
+String nowstr() => formatTime(DateTime.now());
+String todaynow() => formatDateTime(DateTime.now());
