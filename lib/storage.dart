@@ -159,6 +159,7 @@ Future readWechatData(AccountData? accountData, String account) async {
       if (row['当前状态'] != '支付成功' &&
           row['当前状态'] != '已存入零钱' &&
           row['当前状态'] != '已转账' &&
+          row['当前状态'] != '已收钱' &&
           row['当前状态'] != '朋友已收钱') {
         continue;
       }
