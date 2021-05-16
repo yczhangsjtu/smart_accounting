@@ -78,6 +78,8 @@ class _MainState extends State<Main> {
   TextEditingController? _updateResetController;
   int updateTransactionType = 0;
 
+  TextEditingController? _accountNameController;
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +113,8 @@ class _MainState extends State<Main> {
     _updateSubcategoryController = TextEditingController();
     _updateCommentController = TextEditingController();
     _updateResetController = TextEditingController();
+
+    _accountNameController = TextEditingController();
   }
 
   void _filterChangeListener() {
@@ -187,6 +191,9 @@ class _MainState extends State<Main> {
     _updateSubcategoryController?.dispose();
     _updateCommentController?.dispose();
     _updateResetController?.dispose();
+
+    _accountNameController?.dispose();
+
     super.dispose();
   }
 
@@ -272,7 +279,9 @@ class _MainState extends State<Main> {
   Widget _buildOpenButton() {
     return OutlinedButton(
         onPressed: () async {
-          _accountData = await readAccountData();
+          final accountData = await readAccountData();
+          if (accountData == null) return;
+          _accountData = accountData;
           _analyzedAccountData = analyze(_accountData);
           reverseSortTransactions(_accountData?.transactions);
           _updateFiltered();
@@ -804,8 +813,37 @@ class _MainState extends State<Main> {
         ),
         OutlinedButton(
           child: Text("Import Alipay"),
-          onPressed: () {
-            print("Import Alipay");
+          onPressed: () async {
+            String? accountName = await showDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text("Account Name"),
+                    content: TextField(controller: _accountNameController),
+                    actions: [
+                      TextButton(
+                          child: Text("OK"),
+                          onPressed: () {
+                            print(_accountNameController?.text);
+                            if (_accountNameController?.text.isNotEmpty ??
+                                false) {
+                              Navigator.of(context)
+                                  .pop(_accountNameController?.text);
+                            }
+                          }),
+                      TextButton(
+                          child: Text("Cancel"),
+                          onPressed: () {
+                            Navigator.of(context).pop(null);
+                          })
+                    ],
+                  );
+                });
+            if (accountName != null) {
+              await readAlipayData(_accountData, accountName);
+              _refresh();
+              setState(() {});
+            }
           },
         ),
         OutlinedButton(
