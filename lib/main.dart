@@ -295,8 +295,8 @@ class _MainState extends State<Main> {
 
   Widget _buildSaveButton() {
     return OutlinedButton(
-        onPressed: () {
-          saveAccountData(_accountData);
+        onPressed: () async {
+          await saveAccountData(_accountData);
           _refresh();
         },
         child: Text("Save",

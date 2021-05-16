@@ -20,7 +20,7 @@ Future<AccountData?> readAccountData() async {
   }
 }
 
-void saveAccountData(AccountData? accountData) async {
+Future saveAccountData(AccountData? accountData) async {
   sortTransactions(accountData?.transactions);
   final path = await getSavePath();
   if (path == null) return;
