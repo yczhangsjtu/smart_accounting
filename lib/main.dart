@@ -848,8 +848,37 @@ class _MainState extends State<Main> {
         ),
         OutlinedButton(
           child: Text("Import Wechat"),
-          onPressed: () {
-            print("Import Wechat");
+          onPressed: () async {
+            String? accountName = await showDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text("Account Name"),
+                    content: TextField(controller: _accountNameController),
+                    actions: [
+                      TextButton(
+                          child: Text("OK"),
+                          onPressed: () {
+                            print(_accountNameController?.text);
+                            if (_accountNameController?.text.isNotEmpty ??
+                                false) {
+                              Navigator.of(context)
+                                  .pop(_accountNameController?.text);
+                            }
+                          }),
+                      TextButton(
+                          child: Text("Cancel"),
+                          onPressed: () {
+                            Navigator.of(context).pop(null);
+                          })
+                    ],
+                  );
+                });
+            if (accountName != null) {
+              await readWechatData(_accountData, accountName);
+              _refresh();
+              setState(() {});
+            }
           },
         ),
       ],

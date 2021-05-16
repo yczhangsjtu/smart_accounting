@@ -128,3 +128,107 @@ Future readAlipayData(AccountData? accountData, String account) async {
     return null;
   }
 }
+
+Future readWechatData(AccountData? accountData, String account) async {
+  if (accountData == null) return;
+  final typeGroup = XTypeGroup(label: 'json', extensions: ['csv']);
+  final file = await openFile(acceptedTypeGroups: [typeGroup]);
+  try {
+    String content = utf8.decode(await file?.readAsBytes() ?? []);
+    final match = RegExp(r"微信支付账单明细列表-+,+\r\n").allMatches(content).first;
+    content = content.substring(match.end);
+    final rows = CsvToListConverter(shouldParseNumbers: false).convert(content);
+    for (var i = 0; i < rows.length; i++) {
+      for (var j = 0; j < rows[0].length; j++) {
+        if (rows[i][j] is String) rows[i][j] = rows[i][j].trim();
+      }
+    }
+
+    Set<String> allIdentifiers = {};
+    for (Transaction transaction in accountData.transactions) {
+      if (transaction.identifier.startsWith("wechat")) {
+        allIdentifiers.add(transaction.identifier);
+      }
+    }
+
+    for (int i = 1; i < rows.length; i++) {
+      Map<String, String> row = {};
+      for (int j = 0; j < rows[0].length; j++) {
+        row[rows[0][j]] = rows[i][j];
+      }
+      if (row['当前状态'] != '支付成功' &&
+          row['当前状态'] != '已存入零钱' &&
+          row['当前状态'] != '已转账' &&
+          row['当前状态'] != '朋友已收钱') {
+        continue;
+      }
+      final identifier = "wechat" + (row["交易单号"] ?? "");
+      if (allIdentifiers.contains(identifier)) continue;
+      final time = formatDateTime(DateTime.parse(row['交易时间'] ?? ""));
+      String outAccount, inAccount;
+      int outAmount, inAmount;
+      int entryType;
+      if (row['收/支'] == '支出') {
+        outAccount = account;
+        outAmount = int.parse(
+            row['金额(元)']?.replaceFirst('¥', '').replaceFirst('.', '') ?? "0");
+        inAccount = '';
+        inAmount = 0;
+        entryType = 0;
+      } else if (row['收/支'] == '收入') {
+        inAccount = account;
+        inAmount = int.parse(
+            row['金额(元)']?.replaceFirst('¥', '').replaceFirst('.', '') ?? "0");
+        outAccount = '';
+        outAmount = 0;
+        entryType = 1;
+      } else {
+        continue;
+      }
+
+      String comment =
+          "${row['交易对方']?.replaceFirst('"', '').replaceFirst('/', '')} ${row['商品']?.replaceFirst('"', '').replaceFirst('/', '')}";
+      if (row['备注'] != '' && row['备注'] != null) comment += row['备注'] ?? "";
+      if (row['备注'] != '"/"' && row['备注'] != null)
+        comment += row['备注']!.replaceFirst('"', '').replaceFirst('/', '');
+
+      String category = '其他';
+      String subcategory = '';
+      for (var entry in accountData.categories.entries) {
+        final keyword = entry.key;
+        final value = entry.value;
+        int loc = comment.indexOf(keyword);
+        if (loc >= 0) {
+          loc = value.indexOf("-");
+          if (loc >= 0) {
+            category = value.substring(0, loc);
+            subcategory = value.substring(loc + 1);
+          } else {
+            category = value;
+            subcategory = '';
+          }
+          break;
+        }
+      }
+
+      final transaction = Transaction(
+          time,
+          outAccount,
+          inAccount,
+          outAmount,
+          inAmount,
+          entryType,
+          category,
+          subcategory,
+          comment,
+          0,
+          identifier,
+          DateTime.parse(time).millisecondsSinceEpoch);
+
+      accountData.transactions.add(transaction);
+    }
+  } catch (e) {
+    print("Exception in decoding the file: " + e.toString());
+    return null;
+  }
+}
