@@ -949,64 +949,105 @@ class _MainState extends State<Main> {
                     ),
                   ),
                 )),
-                DataCell(Container(
-                  width: 100,
-                  child: Column(
-                    children: [
-                      Text(transaction.time.substring(0, 10)),
-                      Text(transaction.time.substring(11)),
-                    ],
-                  ),
-                )),
-                DataCell(Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Column(
-                      children: [
-                        Text(transaction.outAccount),
+                DataCell(
+                    Container(
+                      width: 100,
+                      child: Column(
+                        children: [
+                          Text(transaction.time.substring(0, 10)),
+                          Text(transaction.time.substring(11)),
+                        ],
+                      ),
+                    ), onTap: () {
+                  updateDate = DateTime.parse(transaction.time);
+                  updateTime = TimeOfDay.fromDateTime(updateDate);
+                  setState(() {});
+                }),
+                DataCell(
+                    Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Column(
+                          children: [
+                            Text(transaction.outAccount),
+                            transaction.entryType == 0 ||
+                                    transaction.entryType == 2
+                                ? Text(processMoney(transaction.outAmount),
+                                    style: TextStyle(color: Colors.red))
+                                : Container(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    onTap:
                         transaction.entryType == 0 || transaction.entryType == 2
-                            ? Text(processMoney(transaction.outAmount),
-                                style: TextStyle(color: Colors.red))
-                            : Container(),
-                      ],
+                            ? () {
+                                _updateFromAccountController?.text =
+                                    transaction.outAccount;
+                              }
+                            : null),
+                DataCell(
+                    Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Column(
+                          children: [
+                            Text(transaction.inAccount),
+                            transaction.entryType == 1 ||
+                                    transaction.entryType == 2
+                                ? Text(processMoney(transaction.inAmount),
+                                    style: TextStyle(color: Colors.green))
+                                : Container(),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                )),
-                DataCell(Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Column(
-                      children: [
-                        Text(transaction.inAccount),
+                    onTap:
                         transaction.entryType == 1 || transaction.entryType == 2
-                            ? Text(processMoney(transaction.inAmount),
-                                style: TextStyle(color: Colors.green))
-                            : Container(),
-                      ],
-                    ),
-                  ),
-                )),
-                DataCell(Container(
-                    width: 100,
-                    child:
-                        Text(transactionTypeToString(transaction.entryType)))),
-                DataCell(Container(
-                    width: 100,
-                    child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(transaction.category)))),
-                DataCell(Container(
-                    width: 100,
-                    child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(transaction.subcategory)))),
-                DataCell(Container(
-                    width: 300,
-                    child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(transaction.comment)))),
+                            ? () {
+                                _updateToAccountController?.text =
+                                    transaction.inAccount;
+                              }
+                            : null),
+                DataCell(
+                    Container(
+                        width: 100,
+                        child: Text(
+                            transactionTypeToString(transaction.entryType))),
+                    onTap: () {
+                  updateDate = DateTime.parse(transaction.time);
+                  updateTime = TimeOfDay.fromDateTime(updateDate);
+                  _updateFromAccountController?.text = transaction.outAccount;
+                  _updateToAccountController?.text = transaction.inAccount;
+                  updateTransactionType = transaction.entryType;
+                  setState(() {});
+                }),
+                DataCell(
+                    Container(
+                        width: 100,
+                        child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(transaction.category))), onTap: () {
+                  _updateCategoryController?.text = transaction.category;
+                }),
+                DataCell(
+                    Container(
+                        width: 100,
+                        child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(transaction.subcategory))), onTap: () {
+                  _updateSubcategoryController?.text = transaction.subcategory;
+                }),
+                DataCell(
+                    Container(
+                        width: 300,
+                        child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(transaction.comment))), onTap: () {
+                  _updateCommentController?.text = transaction.comment;
+                }),
                 DataCell(Container(
                   width: 100,
                   child: Text(transaction.entryType == 3
