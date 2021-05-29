@@ -78,11 +78,13 @@ class Account {
 class FixedInvestmentAccount {
   final String name;
   final int investedAmount;
+  final int index;
   final DateTime startDate;
   final DateTime? endDate;
   final double rate;
-  FixedInvestmentAccount(
-      this.name, this.investedAmount, this.startDate, this.endDate, this.rate);
+  final bool interestBeforeEnd;
+  FixedInvestmentAccount(this.name, this.investedAmount, this.index,
+      this.startDate, this.endDate, this.rate, this.interestBeforeEnd);
 
   bool get hasEndDate {
     return endDate != null;
@@ -122,7 +124,7 @@ class FixedInvestmentAccount {
     return (investedAmount * rate).round();
   }
 
-  int? get interestBeforeEnd {
+  int? get totalProfit {
     final y = years;
     if (y == null) return null;
     return ((pow(1 + rate, y) - 1) * investedAmount).round();
@@ -132,9 +134,10 @@ class FixedInvestmentAccount {
 class FluctuateInvestmentAccount {
   final String name;
   final int investedAmount;
+  final int index;
   final int currentAmount;
   FluctuateInvestmentAccount(
-      this.name, this.investedAmount, this.currentAmount);
+      this.name, this.investedAmount, this.index, this.currentAmount);
 
   int get profit {
     return currentAmount - investedAmount;
@@ -157,8 +160,12 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
   if (accountData == null) return null;
   Map<String, int> balances = {};
   Map<String, Investment> investmentBalances = {};
-  for (Investment investment in accountData.investments) {
+  Map<String, int> investmentIndices = {};
+  for (int i = 0; i < accountData.investments.length; i++) {
+    final investment = accountData.investments[i];
+    investment.investedAmount = 0;
     investmentBalances[investment.name] = investment;
+    investmentIndices[investment.name] = i;
   }
   for (Transaction transaction in accountData.transactions) {
     if (transaction.inAccount.isNotEmpty) {
@@ -201,13 +208,16 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
       fixedInvestments.add(FixedInvestmentAccount(
           investment.value.name,
           investment.value.investedAmount,
+          investmentIndices[investment.value.name]!,
           DateTime.parse(investment.value.startDate),
           DateTime.tryParse(investment.value.endDate),
-          investment.value.rate));
+          investment.value.rate,
+          investment.value.interestBeforeEnd));
     else
       fluctuateInvestments.add(FluctuateInvestmentAccount(
           investment.value.name,
           investment.value.investedAmount,
+          investmentIndices[investment.value.name]!,
           (investment.value.currentValue * 100).round()));
   }
   return AnalyzedAccountData(accounts, fixedInvestments, fluctuateInvestments);

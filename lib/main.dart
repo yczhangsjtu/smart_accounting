@@ -76,6 +76,8 @@ class _MainState extends State<Main> {
   TextEditingController? _updateSubcategoryController;
   TextEditingController? _updateCommentController;
   TextEditingController? _updateResetController;
+  TextEditingController? _updateInvestmentRateController;
+  TextEditingController? _updateInvestmentCurrentValueController;
   int updateTransactionType = 0;
 
   TextEditingController? _accountNameController;
@@ -84,8 +86,10 @@ class _MainState extends State<Main> {
   int updateInvestmentType = 0;
   int fixedInvestmentPageIndex = 0;
   int fluctuateInvestmentPageIndex = 0;
+  TextEditingController? _updateInvestmentNameController;
   TextEditingController? _jumpToFixedInvestmentPageController;
   TextEditingController? _jumpToFluctuateInvestmentPageController;
+  TextEditingController? _newInvestmentNameController;
   List<int> currentFixedInvestmentPage = [];
   List<int> currentFluctuateInvestmentPage = [];
   bool showExpired = true;
@@ -96,6 +100,11 @@ class _MainState extends State<Main> {
   bool sortFluctuateInvestmentAscending = true;
   List<int> filteredFixedInvestment = [];
   List<int> filteredFluctuateInvestment = [];
+
+  int? selectedInvestmentIndex;
+  DateTime updateInvestmentStart = DateTime.now();
+  DateTime? updateInvestmentEnd;
+  bool interestBeforeEnd = false;
 
   @override
   void initState() {
@@ -113,6 +122,7 @@ class _MainState extends State<Main> {
     _filterResetController = TextEditingController();
     _jumpToFixedInvestmentPageController = TextEditingController();
     _jumpToFluctuateInvestmentPageController = TextEditingController();
+    _newInvestmentNameController = TextEditingController();
 
     _filterAllController?.addListener(_filterChangeListener);
     _filterTimeController?.addListener(_filterChangeListener);
@@ -135,6 +145,10 @@ class _MainState extends State<Main> {
     _updateResetController = TextEditingController();
 
     _accountNameController = TextEditingController();
+    _updateInvestmentNameController = TextEditingController();
+    _updateInvestmentNameController?.addListener(_onUpdateSelectInvestmentName);
+    _updateInvestmentRateController = TextEditingController();
+    _updateInvestmentCurrentValueController = TextEditingController();
   }
 
   void _filterChangeListener() {
@@ -215,6 +229,10 @@ class _MainState extends State<Main> {
 
     _jumpToFixedInvestmentPageController?.dispose();
     _jumpToFluctuateInvestmentPageController?.dispose();
+    _updateInvestmentNameController?.dispose();
+    _updateInvestmentRateController?.dispose();
+    _updateInvestmentCurrentValueController?.dispose();
+    _newInvestmentNameController?.dispose();
 
     super.dispose();
   }
@@ -307,7 +325,6 @@ class _MainState extends State<Main> {
       if (investment.investedAmount == 0 && !showEmpty) continue;
       filteredFluctuateInvestment.add(i);
     }
-    print(filteredFluctuateInvestment);
     _updateFluctuateInvestmentCurrentPage();
   }
 
@@ -323,6 +340,23 @@ class _MainState extends State<Main> {
         fluctuateInvestmentPageIndex * pageSize,
         min((fluctuateInvestmentPageIndex + 1) * pageSize,
             filteredFluctuateInvestment.length));
+  }
+
+  void _onUpdateSelectInvestmentName() {
+    final text = _updateInvestmentNameController?.text;
+    selectedInvestmentIndex = null;
+    for (int i = 0; i < (_accountData?.investments.length ?? 0); i++) {
+      if (_accountData?.investments[i].name == text) {
+        selectedInvestmentIndex = i;
+        if (_accountData?.investments[i].type == "fixed") {
+          investmentShowPageType = 0;
+        } else {
+          investmentShowPageType = 1;
+        }
+        break;
+      }
+    }
+    setState(() {});
   }
 
   @override
@@ -1288,6 +1322,41 @@ class _MainState extends State<Main> {
         ]));
   }
 
+  void _showChangeNameDialog() {
+    _newInvestmentNameController?.text =
+        _accountData?.investments[selectedInvestmentIndex!].name ?? "";
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+              title: Text("New Name"),
+              content: TextField(controller: _newInvestmentNameController),
+              actions: [
+                TextButton(
+                    child: Text("OK"),
+                    onPressed: (_newInvestmentNameController?.text ?? "")
+                            .trim()
+                            .isNotEmpty
+                        ? () {
+                            final newName =
+                                _newInvestmentNameController?.text.trim();
+                            _accountData?.investments[selectedInvestmentIndex!]
+                                .name = newName!;
+                            _updateInvestmentNameController?.text = newName!;
+                            _refresh();
+                            setState(() {});
+                            Navigator.of(context).pop();
+                          }
+                        : null),
+                TextButton(
+                    child: Text("Cancel"),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    }),
+              ]);
+        });
+  }
+
   Widget _buildInvestmentUpdate() {
     return Container(
         child: Column(
@@ -1296,11 +1365,17 @@ class _MainState extends State<Main> {
           children: [
             Expanded(
                 child: TextField(
+                    controller: _updateInvestmentNameController,
                     decoration: InputDecoration(
                         hintText: "Name",
                         isCollapsed: true,
                         contentPadding: EdgeInsets.all(8.0),
                         border: OutlineInputBorder()))),
+            OutlinedButton(
+                onPressed: selectedInvestmentIndex == null
+                    ? null
+                    : _showChangeNameDialog,
+                child: Text("Change")),
           ],
         ),
         Row(
@@ -1328,9 +1403,36 @@ class _MainState extends State<Main> {
         updateInvestmentType == 0
             ? Padding(
                 padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Checkbox(
+                        value: interestBeforeEnd,
+                        onChanged: (value) {
+                          setState(() {
+                            interestBeforeEnd = value ?? false;
+                          });
+                        }),
+                    Expanded(child: Text("Interest Before End"))
+                  ],
+                ),
+              )
+            : Container(),
+        updateInvestmentType == 0
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
                 child: Row(children: [
                   Container(width: 50, child: Text("Start")),
-                  TextButton(child: Text("2021-5-29"), onPressed: () {})
+                  TextButton(
+                      child: Text(formatDate(updateInvestmentStart)),
+                      onPressed: () async {
+                        updateInvestmentStart = await showDatePicker(
+                                context: context,
+                                initialDate: updateInvestmentStart,
+                                firstDate: DateTime(1970, 1, 1),
+                                lastDate: DateTime(9999, 12, 31)) ??
+                            updateInvestmentStart;
+                        setState(() {});
+                      })
                 ]),
               )
             : Container(),
@@ -1339,7 +1441,29 @@ class _MainState extends State<Main> {
                 padding: const EdgeInsets.all(8.0),
                 child: Row(children: [
                   Container(width: 50, child: Text("End")),
-                  TextButton(child: Text("2021-5-29"), onPressed: () {})
+                  TextButton(
+                      child: Text(updateInvestmentEnd == null
+                          ? "Unspecified"
+                          : formatDate(updateInvestmentEnd!)),
+                      onPressed: () async {
+                        updateInvestmentEnd = await showDatePicker(
+                                context: context,
+                                initialDate: updateInvestmentEnd ??
+                                    updateInvestmentStart,
+                                firstDate: updateInvestmentStart,
+                                lastDate: DateTime(9999, 12, 31)) ??
+                            updateInvestmentEnd;
+                        setState(() {});
+                      }),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: OutlinedButton(
+                        onPressed: () {
+                          updateInvestmentEnd = null;
+                          setState(() {});
+                        },
+                        child: Text("Clear")),
+                  )
                 ]),
               )
             : Container(),
@@ -1347,10 +1471,11 @@ class _MainState extends State<Main> {
             ? Row(children: [
                 Expanded(
                     child: TextField(
+                        controller: _updateInvestmentRateController,
                         inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d{0,2}(\.\d{0,2})?'))
-                    ],
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d{0,2}(\.\d{0,2})?'))
+                        ],
                         decoration: InputDecoration(
                             hintText: "Rate",
                             isCollapsed: true,
@@ -1366,10 +1491,11 @@ class _MainState extends State<Main> {
             ? Row(children: [
                 Expanded(
                     child: TextField(
+                        controller: _updateInvestmentCurrentValueController,
                         inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d+(\.\d{0,2})?'))
-                    ],
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+(\.\d{0,2})?'))
+                        ],
                         decoration: InputDecoration(
                             hintText: "Current Value",
                             isCollapsed: true,
@@ -1383,11 +1509,58 @@ class _MainState extends State<Main> {
 
   Widget _buildInvestmentLeftSideTop() {
     return Row(children: [
-      OutlinedButton(onPressed: () {}, child: Text("Update/Add")),
+      OutlinedButton(
+          onPressed: _updateInvestmentNameController?.text.trim().isEmpty ??
+                  true
+              ? null
+              : () {
+                  final investment = Investment(
+                    _updateInvestmentNameController!.text,
+                    updateInvestmentType == 0 ? "fixed" : "fluctuate",
+                    updateInvestmentType == 0
+                        ? 0
+                        : double.parse(
+                            _updateInvestmentCurrentValueController?.text ??
+                                "0"),
+                    updateInvestmentType == 0 && interestBeforeEnd,
+                    updateInvestmentType == 0
+                        ? double.parse(
+                                _updateInvestmentRateController?.text ?? "0") /
+                            100
+                        : 0,
+                    updateInvestmentType == 0
+                        ? formatDate(updateInvestmentStart)
+                        : "",
+                    updateInvestmentType == 0 && updateInvestmentEnd != null
+                        ? formatDate(updateInvestmentEnd!)
+                        : "",
+                  );
+                  if (selectedInvestmentIndex == null) {
+                    _accountData?.investments.add(investment);
+                  } else {
+                    _accountData?.investments[selectedInvestmentIndex!] =
+                        investment;
+                  }
+                  _refresh();
+                  _onUpdateSelectInvestmentName();
+                  setState(() {});
+                },
+          child: Text((selectedInvestmentIndex == null) ? "Add" : "Update")),
+      Expanded(child: Container()),
       Expanded(child: Container()),
       OutlinedButton(
-          onPressed: () {},
-          child: Text("Delete", style: TextStyle(color: Colors.red))),
+          onPressed: selectedInvestmentIndex == null
+              ? null
+              : () {
+                  _accountData?.investments.removeAt(selectedInvestmentIndex!);
+                  _refresh();
+                  setState(() {});
+                },
+          child: Text("Delete",
+              style: TextStyle(
+                  color: selectedInvestmentIndex == null
+                      ? Colors.red[10]
+                      : Colors.red))),
     ]);
   }
 
@@ -1702,13 +1875,13 @@ class _MainState extends State<Main> {
           DataColumn(
               label: Column(
             children: [
-              Text("Interest/Year"),
+              Text("Profit/Year"),
             ],
           )),
           DataColumn(
               label: Column(
             children: [
-              Text("Total Interest"),
+              Text("Total Profit"),
             ],
           )),
         ],
@@ -1718,83 +1891,93 @@ class _MainState extends State<Main> {
             final investment =
                 _analyzedAccountData?.fixedInvestments[investmentIndex];
             if (investment != null)
-              return DataRow(cells: [
-                DataCell(
-                    // Name
-                    Container(
-                        width: 150,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Text(investment.name),
-                        )),
-                    onTap: () {}),
-                DataCell(
-                    // Invested
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(
-                        (investment.investedAmount / 100).toStringAsFixed(2)),
-                  ),
-                )),
-                DataCell(// Start
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(formatDate(investment.startDate)),
-                  ),
-                )),
-                DataCell(// End
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(
-                      investment.hasEndDate
-                          ? formatDate(investment.endDate!)
-                          : "",
-                      style: TextStyle(
-                          color:
-                              investment.expired ? Colors.red : Colors.black),
-                    ),
-                  ),
-                )),
-                DataCell(// Period
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(investment.periodStr ?? ""),
-                  ),
-                )),
-                DataCell(// Rate
-                    Container(
-                        width: 60,
+              return DataRow(
+                  selected: investment.index == selectedInvestmentIndex,
+                  cells: [
+                    DataCell(
+                        // Name
+                        Container(
+                            width: 150,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Text(investment.name),
+                            )), onTap: () {
+                      _updateInvestmentNameController?.text = investment.name;
+                      updateInvestmentType = 0;
+                      interestBeforeEnd = investment.interestBeforeEnd;
+                      updateInvestmentStart = investment.startDate;
+                      updateInvestmentEnd = investment.endDate;
+                      _updateInvestmentRateController?.text =
+                          (investment.rate * 100).toStringAsFixed(2);
+                      _onUpdateSelectInvestmentName();
+                    }),
+                    DataCell(
+                        // Invested
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text((investment.investedAmount / 100)
+                            .toStringAsFixed(2)),
+                      ),
+                    )),
+                    DataCell(// Start
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(formatDate(investment.startDate)),
+                      ),
+                    )),
+                    DataCell(// End
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          investment.hasEndDate
+                              ? formatDate(investment.endDate!)
+                              : "",
+                          style: TextStyle(
+                              color: investment.expired
+                                  ? Colors.red
+                                  : Colors.black),
+                        ),
+                      ),
+                    )),
+                    DataCell(// Period
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(investment.periodStr ?? ""),
+                      ),
+                    )),
+                    DataCell(// Rate
+                        Container(
+                            width: 60,
+                            child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Text(
+                                    "${(investment.rate * 100).toStringAsFixed(2)}%")))),
+                    DataCell(Container(
+                        // Interest Per Year
+                        width: 100,
                         child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: Text(
-                                "${(investment.rate * 100).toStringAsFixed(2)}%")))),
-                DataCell(Container(
-                    // Interest Per Year
-                    width: 100,
-                    child: SingleChildScrollView(
+                            child: Text((investment.interestPerYear / 100)
+                                .toStringAsFixed(2))))),
+                    DataCell(// Expected Total Interest
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: Text((investment.interestPerYear / 100)
-                            .toStringAsFixed(2))))),
-                DataCell(// Expected Total Interest
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(investment.hasEndDate
-                        ? (investment.interestBeforeEnd! / 100)
-                            .toStringAsFixed(2)
-                        : ""),
-                  ),
-                )),
-              ]);
+                        child: Text(investment.hasEndDate
+                            ? (investment.totalProfit! / 100).toStringAsFixed(2)
+                            : ""),
+                      ),
+                    )),
+                  ]);
           }
           return DataRow(cells: [
             DataCell(Container(width: 150)),
@@ -1873,53 +2056,62 @@ class _MainState extends State<Main> {
             final investment =
                 _analyzedAccountData?.fluctuateInvestments[investmentIndex];
             if (investment != null)
-              return DataRow(cells: [
-                DataCell(
-                    // Name
-                    Container(
-                        width: 200,
+              return DataRow(
+                  selected: investment.index == selectedInvestmentIndex,
+                  cells: [
+                    DataCell(
+                        // Name
+                        Container(
+                            width: 200,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Text(investment.name),
+                            )), onTap: () {
+                      _updateInvestmentNameController?.text = investment.name;
+                      updateInvestmentType = 1;
+                      _updateInvestmentCurrentValueController?.text =
+                          (investment.currentAmount / 100).toStringAsFixed(2);
+                      _onUpdateSelectInvestmentName();
+                    }),
+                    DataCell(
+                      // Invested
+                      Container(
+                        width: 100,
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          child: Text(investment.name),
-                        )),
-                    onTap: () {}),
-                DataCell(
-                    // Invested
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(
-                        (investment.investedAmount / 100).toStringAsFixed(2)),
-                  ),
-                )),
-                DataCell(// Current Value
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(
-                        (investment.currentAmount / 100).toStringAsFixed(2)),
-                  ),
-                )),
-                DataCell(// Profit
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text((investment.profit / 100).toStringAsFixed(2)),
-                  ),
-                )),
-                DataCell(// Profit Rate
-                    Container(
-                  width: 100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(
-                        "${(investment.profitRate * 100).toStringAsFixed(2)}%"),
-                  ),
-                )),
-              ]);
+                          child: Text((investment.investedAmount / 100)
+                              .toStringAsFixed(2)),
+                        ),
+                      ),
+                    ),
+                    DataCell(// Current Value
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text((investment.currentAmount / 100)
+                            .toStringAsFixed(2)),
+                      ),
+                    )),
+                    DataCell(// Profit
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child:
+                            Text((investment.profit / 100).toStringAsFixed(2)),
+                      ),
+                    )),
+                    DataCell(// Profit Rate
+                        Container(
+                      width: 100,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                            "${(investment.profitRate * 100).toStringAsFixed(2)}%"),
+                      ),
+                    )),
+                  ]);
           }
           return DataRow(cells: [
             DataCell(Container(width: 200)),
