@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'data.dart';
@@ -74,10 +75,82 @@ class Account {
   Account(this.name, this.balance);
 }
 
+class FixedInvestmentAccount {
+  final String name;
+  final int investedAmount;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final double rate;
+  FixedInvestmentAccount(
+      this.name, this.investedAmount, this.startDate, this.endDate, this.rate);
+
+  bool get hasEndDate {
+    return endDate != null;
+  }
+
+  bool get expired {
+    return endDate != null && endDate!.isBefore(DateTime.now());
+  }
+
+  int? get days {
+    if (endDate == null) return null;
+    return (endDate!.millisecondsSinceEpoch -
+            startDate.millisecondsSinceEpoch) ~/
+        (1000 * 3600 * 24);
+  }
+
+  int? get months {
+    if (endDate == null) return null;
+    return (endDate!.month - startDate.month) +
+        (endDate!.year - startDate.year) * 12;
+  }
+
+  double? get years {
+    final m = this.months;
+    if (m == null) return null;
+    return m / 12;
+  }
+
+  String? get periodStr {
+    final m = this.months;
+    if (m == null) return null;
+    if (m < 12) return "$m Months";
+    return "${(m / 12).toStringAsFixed(1)} Years";
+  }
+
+  int get interestPerYear {
+    return (investedAmount * rate).round();
+  }
+
+  int? get interestBeforeEnd {
+    final y = years;
+    if (y == null) return null;
+    return ((pow(1 + rate, y) - 1) * investedAmount).round();
+  }
+}
+
+class FluctuateInvestmentAccount {
+  final String name;
+  final int investedAmount;
+  final int currentAmount;
+  FluctuateInvestmentAccount(
+      this.name, this.investedAmount, this.currentAmount);
+
+  int get profit {
+    return currentAmount - investedAmount;
+  }
+
+  double get profitRate {
+    return profit / investedAmount;
+  }
+}
+
 class AnalyzedAccountData {
   final List<Account> accounts;
-  final List<Investment> investments;
-  AnalyzedAccountData(this.accounts, this.investments);
+  final List<FixedInvestmentAccount> fixedInvestments;
+  final List<FluctuateInvestmentAccount> fluctuateInvestments;
+  AnalyzedAccountData(
+      this.accounts, this.fixedInvestments, this.fluctuateInvestments);
 }
 
 AnalyzedAccountData? analyze(AccountData? accountData) {
@@ -121,11 +194,23 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
     sum += accountName.value;
   }
   accounts.add(Account("Sum", sum));
-  List<Investment> investments = [];
+  List<FixedInvestmentAccount> fixedInvestments = [];
+  List<FluctuateInvestmentAccount> fluctuateInvestments = [];
   for (var investment in investmentBalances.entries) {
-    investments.add(investment.value);
+    if (investment.value.type == "fixed")
+      fixedInvestments.add(FixedInvestmentAccount(
+          investment.value.name,
+          investment.value.investedAmount,
+          DateTime.parse(investment.value.startDate),
+          DateTime.tryParse(investment.value.endDate),
+          investment.value.rate));
+    else
+      fluctuateInvestments.add(FluctuateInvestmentAccount(
+          investment.value.name,
+          investment.value.investedAmount,
+          (investment.value.currentValue * 100).round()));
   }
-  return AnalyzedAccountData(accounts, investments);
+  return AnalyzedAccountData(accounts, fixedInvestments, fluctuateInvestments);
 }
 
 enum Field {

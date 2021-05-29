@@ -80,6 +80,23 @@ class _MainState extends State<Main> {
 
   TextEditingController? _accountNameController;
 
+  int investmentShowPageType = 0;
+  int updateInvestmentType = 0;
+  int fixedInvestmentPageIndex = 0;
+  int fluctuateInvestmentPageIndex = 0;
+  TextEditingController? _jumpToFixedInvestmentPageController;
+  TextEditingController? _jumpToFluctuateInvestmentPageController;
+  List<int> currentFixedInvestmentPage = [];
+  List<int> currentFluctuateInvestmentPage = [];
+  bool showExpired = true;
+  bool showEmpty = false;
+  int sortFixedInvestmentColumn = 2;
+  bool sortFixedInvestmentAscending = false;
+  int sortFluctuateInvestmentColumn = 0;
+  bool sortFluctuateInvestmentAscending = true;
+  List<int> filteredFixedInvestment = [];
+  List<int> filteredFluctuateInvestment = [];
+
   @override
   void initState() {
     super.initState();
@@ -94,6 +111,9 @@ class _MainState extends State<Main> {
     _filterSubcategoryController = TextEditingController();
     _filterCommentController = TextEditingController();
     _filterResetController = TextEditingController();
+    _jumpToFixedInvestmentPageController = TextEditingController();
+    _jumpToFluctuateInvestmentPageController = TextEditingController();
+
     _filterAllController?.addListener(_filterChangeListener);
     _filterTimeController?.addListener(_filterChangeListener);
     _filterFromAccountController?.addListener(_filterChangeListener);
@@ -163,7 +183,6 @@ class _MainState extends State<Main> {
       filters.add(Filter(Field.ResetTo, _filterResetController?.text ?? "",
           filterResetPrecise));
     }
-    print(filters);
     setState(() {
       _updateFiltered();
     });
@@ -194,6 +213,9 @@ class _MainState extends State<Main> {
 
     _accountNameController?.dispose();
 
+    _jumpToFixedInvestmentPageController?.dispose();
+    _jumpToFluctuateInvestmentPageController?.dispose();
+
     super.dispose();
   }
 
@@ -201,11 +223,21 @@ class _MainState extends State<Main> {
     return (filtered.length - 1) ~/ pageSize;
   }
 
+  int get maxFixedInvestmentPageIndex {
+    return (filteredFixedInvestment.length - 1) ~/ pageSize;
+  }
+
+  int get maxFluctuateInvestmentPageIndex {
+    return (filteredFluctuateInvestment.length - 1) ~/ pageSize;
+  }
+
   void _refresh() {
     sortTransactions(_accountData?.transactions);
     _analyzedAccountData = analyze(_accountData);
     reverseSortTransactions(_accountData?.transactions);
     _updateFiltered();
+    _updateFixedInvestmentFiltered();
+    _updateFluctuateInvestmentFiltered();
   }
 
   void _updateFiltered() {
@@ -222,6 +254,77 @@ class _MainState extends State<Main> {
         pageIndex * pageSize, min((pageIndex + 1) * pageSize, filtered.length));
   }
 
+  void _updateFixedInvestmentFiltered() {
+    filteredFixedInvestment = [];
+    if (_analyzedAccountData == null) return;
+    _analyzedAccountData!.fixedInvestments.sort((a, b) {
+      int flip = sortFixedInvestmentAscending ? 1 : -1;
+      if (sortFixedInvestmentColumn == 0) {
+        return a.name.compareTo(b.name) * flip;
+      } else if (sortFixedInvestmentColumn == 1) {
+        return a.investedAmount.compareTo(b.investedAmount) * flip;
+      } else if (sortFixedInvestmentColumn == 2) {
+        return a.startDate.compareTo(b.startDate) * flip;
+      } else if (sortFixedInvestmentColumn == 3) {
+        if (a.endDate == null && b.endDate == null) return 0;
+        if (a.endDate != null && b.endDate == null) return flip;
+        if (a.endDate == null && b.endDate != null) return -flip;
+        return a.endDate!.compareTo(b.endDate!) * flip;
+      } else if (sortFixedInvestmentColumn == 4) {
+        return (a.months ?? 0).compareTo(b.months ?? 0) * flip;
+      } else if (sortFixedInvestmentColumn == 5) {
+        return a.rate.compareTo(b.rate) * flip;
+      }
+      return 0;
+    });
+    for (int i = 0; i < (_analyzedAccountData!.fixedInvestments.length); i++) {
+      final investment = _analyzedAccountData!.fixedInvestments[i];
+      if ((investment.expired && !showExpired) ||
+          (investment.investedAmount == 0 && !showEmpty)) continue;
+      filteredFixedInvestment.add(i);
+    }
+    _updateFixedInvestmentCurrentPage();
+  }
+
+  void _updateFluctuateInvestmentFiltered() {
+    filteredFluctuateInvestment = [];
+    if (_analyzedAccountData == null) return;
+    _analyzedAccountData!.fluctuateInvestments.sort((a, b) {
+      int flip = sortFluctuateInvestmentAscending ? 1 : -1;
+      if (sortFluctuateInvestmentColumn == 0) {
+        return a.name.compareTo(b.name) * flip;
+      } else if (sortFluctuateInvestmentColumn == 1) {
+        return a.investedAmount.compareTo(b.investedAmount) * flip;
+      } else if (sortFluctuateInvestmentColumn == 2) {
+        return a.currentAmount.compareTo(b.currentAmount) * flip;
+      }
+      return 0;
+    });
+    for (int i = 0;
+        i < (_analyzedAccountData!.fluctuateInvestments.length);
+        i++) {
+      final investment = _analyzedAccountData!.fluctuateInvestments[i];
+      if (investment.investedAmount == 0 && !showEmpty) continue;
+      filteredFluctuateInvestment.add(i);
+    }
+    print(filteredFluctuateInvestment);
+    _updateFluctuateInvestmentCurrentPage();
+  }
+
+  void _updateFixedInvestmentCurrentPage() {
+    currentFixedInvestmentPage = filteredFixedInvestment.sublist(
+        fixedInvestmentPageIndex * pageSize,
+        min((fixedInvestmentPageIndex + 1) * pageSize,
+            filteredFixedInvestment.length));
+  }
+
+  void _updateFluctuateInvestmentCurrentPage() {
+    currentFluctuateInvestmentPage = filteredFluctuateInvestment.sublist(
+        fluctuateInvestmentPageIndex * pageSize,
+        min((fluctuateInvestmentPageIndex + 1) * pageSize,
+            filteredFluctuateInvestment.length));
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -230,16 +333,8 @@ class _MainState extends State<Main> {
         appBar: AppBar(title: _buildTitleBar()),
         body: TabBarView(
           children: [
-            Container(
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  _buildLeftSide(),
-                  Expanded(child: _buildRightSide())
-                ],
-              ),
-            ),
-            Container(color: Colors.blue),
+            _buildTransactionPage(),
+            _buildInvestimentPage(),
           ],
         ),
       ),
@@ -284,6 +379,8 @@ class _MainState extends State<Main> {
           _accountData = accountData;
           _analyzedAccountData = analyze(_accountData);
           reverseSortTransactions(_accountData?.transactions);
+          _updateFixedInvestmentFiltered();
+          _updateFluctuateInvestmentFiltered();
           _updateFiltered();
           setState(() {});
         },
@@ -303,6 +400,15 @@ class _MainState extends State<Main> {
             style: TextStyle(
               color: Colors.white,
             )));
+  }
+
+  Widget _buildTransactionPage() {
+    return Container(
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        children: [_buildLeftSide(), Expanded(child: _buildRightSide())],
+      ),
+    );
   }
 
   Widget _buildLeftSide() {
@@ -1151,6 +1257,675 @@ class _MainState extends State<Main> {
             DataCell(Container(width: 100)),
             DataCell(Container(width: 100)),
             DataCell(Container(width: 300)),
+            DataCell(Container(width: 100)),
+          ]);
+        }));
+  }
+
+  Widget _buildInvestimentPage() {
+    return Container(
+        child: Row(
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        _buildInvestmentLeftSide(),
+        Expanded(child: _buildInvestmentRightSide()),
+      ],
+    ));
+  }
+
+  Widget _buildInvestmentLeftSide() {
+    return Container(
+        width: MediaQuery.of(context).size.width / 6,
+        child: Column(mainAxisSize: MainAxisSize.max, children: [
+          Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: _buildInvestmentLeftSideTop(),
+          ),
+          Expanded(
+              child: Container(
+                  padding: EdgeInsets.all(4.0),
+                  child: _buildInvestmentUpdate()))
+        ]));
+  }
+
+  Widget _buildInvestmentUpdate() {
+    return Container(
+        child: Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+                child: TextField(
+                    decoration: InputDecoration(
+                        hintText: "Name",
+                        isCollapsed: true,
+                        contentPadding: EdgeInsets.all(8.0),
+                        border: OutlineInputBorder()))),
+          ],
+        ),
+        Row(
+          children: [
+            Expanded(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: DropdownButton(
+                isExpanded: true,
+                isDense: true,
+                value: updateInvestmentType,
+                items: [
+                  DropdownMenuItem(child: Text("Fixed"), value: 0),
+                  DropdownMenuItem(child: Text("Fluctuate"), value: 1),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    updateInvestmentType = value as int;
+                  });
+                },
+              ),
+            )),
+          ],
+        ),
+        updateInvestmentType == 0
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(children: [
+                  Container(width: 50, child: Text("Start")),
+                  TextButton(child: Text("2021-5-29"), onPressed: () {})
+                ]),
+              )
+            : Container(),
+        updateInvestmentType == 0
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(children: [
+                  Container(width: 50, child: Text("End")),
+                  TextButton(child: Text("2021-5-29"), onPressed: () {})
+                ]),
+              )
+            : Container(),
+        updateInvestmentType == 0
+            ? Row(children: [
+                Expanded(
+                    child: TextField(
+                        inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d{0,2}(\.\d{0,2})?'))
+                    ],
+                        decoration: InputDecoration(
+                            hintText: "Rate",
+                            isCollapsed: true,
+                            contentPadding: EdgeInsets.all(8.0),
+                            border: OutlineInputBorder()))),
+                Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Text("%"),
+                )
+              ])
+            : Container(),
+        updateInvestmentType == 1
+            ? Row(children: [
+                Expanded(
+                    child: TextField(
+                        inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d+(\.\d{0,2})?'))
+                    ],
+                        decoration: InputDecoration(
+                            hintText: "Current Value",
+                            isCollapsed: true,
+                            contentPadding: EdgeInsets.all(8.0),
+                            border: OutlineInputBorder()))),
+              ])
+            : Container(),
+      ],
+    ));
+  }
+
+  Widget _buildInvestmentLeftSideTop() {
+    return Row(children: [
+      OutlinedButton(onPressed: () {}, child: Text("Update/Add")),
+      Expanded(child: Container()),
+      OutlinedButton(
+          onPressed: () {},
+          child: Text("Delete", style: TextStyle(color: Colors.red))),
+    ]);
+  }
+
+  Widget _buildInvestmentRightSide() {
+    return Container(
+        padding: EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                children: [
+                  Expanded(child: _buildInvestmentButtonBar()),
+                  investmentShowPageType == 0
+                      ? _buildFixedInvestmentPageController()
+                      : _buildFluctuateInvestmentPageController()
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: investmentShowPageType == 0
+                        ? _buildFixedInvestmentDataTable()
+                        : _buildFluctuateInvestmentDataTable(),
+                  )),
+            ),
+          ],
+        ));
+  }
+
+  Widget _buildInvestmentButtonBar() {
+    return Wrap(
+      spacing: 4.0,
+      children: [
+        OutlinedButton(
+          child: Text("Fixed"),
+          onPressed: investmentShowPageType != 0
+              ? () {
+                  setState(() {
+                    investmentShowPageType = 0;
+                  });
+                }
+              : null,
+        ),
+        OutlinedButton(
+          child: Text("Fluctuate"),
+          onPressed: investmentShowPageType != 1
+              ? () {
+                  setState(() {
+                    investmentShowPageType = 1;
+                  });
+                }
+              : null,
+        ),
+        Checkbox(
+            value: showEmpty,
+            onChanged: (value) {
+              setState(() {
+                showEmpty = value ?? false;
+                _updateFixedInvestmentFiltered();
+              });
+            }),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+          child: Text("Show Empty"),
+        ),
+        Checkbox(
+            value: showExpired,
+            onChanged: (value) {
+              setState(() {
+                showExpired = value ?? false;
+                _updateFixedInvestmentFiltered();
+              });
+            }),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+          child: Text("Show Expired"),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFixedInvestmentPageController() {
+    return Row(children: [
+      Container(
+          width: 24,
+          height: 24,
+          child: IconButton(
+              iconSize: 20,
+              icon: Icon(Icons.chevron_left),
+              onPressed: fixedInvestmentPageIndex > 0
+                  ? () {
+                      setState(() {
+                        fixedInvestmentPageIndex =
+                            max(fixedInvestmentPageIndex - 1, 0);
+                        _updateFixedInvestmentCurrentPage();
+                      });
+                    }
+                  : null)),
+      Container(
+          padding: EdgeInsets.only(top: 8.0, left: 12.0),
+          child: Text(
+              "${fixedInvestmentPageIndex + 1} / ${maxFixedInvestmentPageIndex + 1}")),
+      Container(
+          width: 24,
+          height: 24,
+          child: IconButton(
+              iconSize: 20,
+              icon: Icon(Icons.chevron_right),
+              onPressed: fixedInvestmentPageIndex < maxFixedInvestmentPageIndex
+                  ? () {
+                      setState(() {
+                        fixedInvestmentPageIndex = min(
+                            fixedInvestmentPageIndex + 1,
+                            maxFixedInvestmentPageIndex);
+                        _updateFixedInvestmentCurrentPage();
+                      });
+                    }
+                  : null)),
+      Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: TextButton(
+            child: Text("Go To"),
+            onPressed: () {
+              int value =
+                  int.parse(_jumpToFixedInvestmentPageController?.text ?? "1") -
+                      1;
+              if (value < 0) value = 0;
+              if (value > maxFixedInvestmentPageIndex)
+                value = maxFixedInvestmentPageIndex;
+              setState(() {
+                fixedInvestmentPageIndex = value;
+                _updateFixedInvestmentCurrentPage();
+              });
+            }),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Container(
+            width: 50,
+            padding: EdgeInsets.only(top: 4.0, bottom: 4.0),
+            child: TextField(
+                controller: _jumpToFixedInvestmentPageController,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))
+                ],
+                decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.all(4.0)))),
+      )
+    ]);
+  }
+
+  Widget _buildFluctuateInvestmentPageController() {
+    return Row(children: [
+      Container(
+          width: 24,
+          height: 24,
+          child: IconButton(
+              iconSize: 20,
+              icon: Icon(Icons.chevron_left),
+              onPressed: fluctuateInvestmentPageIndex > 0
+                  ? () {
+                      setState(() {
+                        fluctuateInvestmentPageIndex =
+                            max(fluctuateInvestmentPageIndex - 1, 0);
+                        _updateFluctuateInvestmentCurrentPage();
+                      });
+                    }
+                  : null)),
+      Container(
+          padding: EdgeInsets.only(top: 8.0, left: 12.0),
+          child: Text(
+              "${fluctuateInvestmentPageIndex + 1} / ${maxFluctuateInvestmentPageIndex + 1}")),
+      Container(
+          width: 24,
+          height: 24,
+          child: IconButton(
+              iconSize: 20,
+              icon: Icon(Icons.chevron_right),
+              onPressed:
+                  fluctuateInvestmentPageIndex < maxFluctuateInvestmentPageIndex
+                      ? () {
+                          setState(() {
+                            fluctuateInvestmentPageIndex = min(
+                                fluctuateInvestmentPageIndex + 1,
+                                maxFluctuateInvestmentPageIndex);
+                            _updateFluctuateInvestmentCurrentPage();
+                          });
+                        }
+                      : null)),
+      Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: TextButton(
+            child: Text("Go To"),
+            onPressed: () {
+              int value = int.parse(
+                      _jumpToFluctuateInvestmentPageController?.text ?? "1") -
+                  1;
+              if (value < 0) value = 0;
+              if (value > maxFluctuateInvestmentPageIndex)
+                value = maxFluctuateInvestmentPageIndex;
+              setState(() {
+                fluctuateInvestmentPageIndex = value;
+                _updateFluctuateInvestmentCurrentPage();
+              });
+            }),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Container(
+            width: 50,
+            padding: EdgeInsets.only(top: 4.0, bottom: 4.0),
+            child: TextField(
+                controller: _jumpToFluctuateInvestmentPageController,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))
+                ],
+                decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.all(4.0)))),
+      )
+    ]);
+  }
+
+  Widget _buildFixedInvestmentDataTable() {
+    return DataTable(
+        columnSpacing: 10.0,
+        horizontalMargin: 2.0,
+        headingRowHeight: 25.0,
+        sortColumnIndex: sortFixedInvestmentColumn,
+        sortAscending: sortFixedInvestmentAscending,
+        columns: [
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFixedInvestmentColumn = index;
+                sortFixedInvestmentAscending = ascend;
+                _updateFixedInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Name"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFixedInvestmentColumn = index;
+                sortFixedInvestmentAscending = ascend;
+                _updateFixedInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Invested"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFixedInvestmentColumn = index;
+                sortFixedInvestmentAscending = ascend;
+                _updateFixedInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Start"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFixedInvestmentColumn = index;
+                sortFixedInvestmentAscending = ascend;
+                _updateFixedInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("End"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFixedInvestmentColumn = index;
+                sortFixedInvestmentAscending = ascend;
+                _updateFixedInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Period"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFixedInvestmentColumn = index;
+                sortFixedInvestmentAscending = ascend;
+                _updateFixedInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Rate"),
+                ],
+              )),
+          DataColumn(
+              label: Column(
+            children: [
+              Text("Interest/Year"),
+            ],
+          )),
+          DataColumn(
+              label: Column(
+            children: [
+              Text("Total Interest"),
+            ],
+          )),
+        ],
+        rows: List.generate(pageSize, (index) {
+          if (index < pageSize && index < currentFixedInvestmentPage.length) {
+            final investmentIndex = currentFixedInvestmentPage[index];
+            final investment =
+                _analyzedAccountData?.fixedInvestments[investmentIndex];
+            if (investment != null)
+              return DataRow(cells: [
+                DataCell(
+                    // Name
+                    Container(
+                        width: 150,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Text(investment.name),
+                        )),
+                    onTap: () {}),
+                DataCell(
+                    // Invested
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                        (investment.investedAmount / 100).toStringAsFixed(2)),
+                  ),
+                )),
+                DataCell(// Start
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(formatDate(investment.startDate)),
+                  ),
+                )),
+                DataCell(// End
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                      investment.hasEndDate
+                          ? formatDate(investment.endDate!)
+                          : "",
+                      style: TextStyle(
+                          color:
+                              investment.expired ? Colors.red : Colors.black),
+                    ),
+                  ),
+                )),
+                DataCell(// Period
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(investment.periodStr ?? ""),
+                  ),
+                )),
+                DataCell(// Rate
+                    Container(
+                        width: 60,
+                        child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                                "${(investment.rate * 100).toStringAsFixed(2)}%")))),
+                DataCell(Container(
+                    // Interest Per Year
+                    width: 100,
+                    child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text((investment.interestPerYear / 100)
+                            .toStringAsFixed(2))))),
+                DataCell(// Expected Total Interest
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(investment.hasEndDate
+                        ? (investment.interestBeforeEnd! / 100)
+                            .toStringAsFixed(2)
+                        : ""),
+                  ),
+                )),
+              ]);
+          }
+          return DataRow(cells: [
+            DataCell(Container(width: 150)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 60)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 100)),
+          ]);
+        }));
+  }
+
+  Widget _buildFluctuateInvestmentDataTable() {
+    return DataTable(
+        columnSpacing: 10.0,
+        horizontalMargin: 2.0,
+        headingRowHeight: 25.0,
+        sortColumnIndex: sortFluctuateInvestmentColumn,
+        sortAscending: sortFluctuateInvestmentAscending,
+        columns: [
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFluctuateInvestmentColumn = index;
+                sortFluctuateInvestmentAscending = ascend;
+                _updateFluctuateInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Name"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFluctuateInvestmentColumn = index;
+                sortFluctuateInvestmentAscending = ascend;
+                _updateFluctuateInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Invested"),
+                ],
+              )),
+          DataColumn(
+              onSort: (index, ascend) {
+                sortFluctuateInvestmentColumn = index;
+                sortFluctuateInvestmentAscending = ascend;
+                _updateFluctuateInvestmentFiltered();
+                setState(() {});
+              },
+              label: Column(
+                children: [
+                  Text("Current Value"),
+                ],
+              )),
+          DataColumn(
+              label: Column(
+            children: [
+              Text("Profit"),
+            ],
+          )),
+          DataColumn(
+              label: Column(
+            children: [
+              Text("Profit Rate"),
+            ],
+          )),
+        ],
+        rows: List.generate(pageSize, (index) {
+          if (index < pageSize &&
+              index < currentFluctuateInvestmentPage.length) {
+            final investmentIndex = currentFluctuateInvestmentPage[index];
+            final investment =
+                _analyzedAccountData?.fluctuateInvestments[investmentIndex];
+            if (investment != null)
+              return DataRow(cells: [
+                DataCell(
+                    // Name
+                    Container(
+                        width: 200,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Text(investment.name),
+                        )),
+                    onTap: () {}),
+                DataCell(
+                    // Invested
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                        (investment.investedAmount / 100).toStringAsFixed(2)),
+                  ),
+                )),
+                DataCell(// Current Value
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                        (investment.currentAmount / 100).toStringAsFixed(2)),
+                  ),
+                )),
+                DataCell(// Profit
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text((investment.profit / 100).toStringAsFixed(2)),
+                  ),
+                )),
+                DataCell(// Profit Rate
+                    Container(
+                  width: 100,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
+                        "${(investment.profitRate * 100).toStringAsFixed(2)}%"),
+                  ),
+                )),
+              ]);
+          }
+          return DataRow(cells: [
+            DataCell(Container(width: 200)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 100)),
+            DataCell(Container(width: 100)),
             DataCell(Container(width: 100)),
           ]);
         }));
