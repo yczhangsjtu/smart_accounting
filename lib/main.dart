@@ -512,7 +512,12 @@ class _MainState extends State<Main> {
         itemCount: _analyzedAccountData?.accounts.length ?? 0,
         itemBuilder: (context, index) {
           final account = _analyzedAccountData?.accounts[index];
-          return _AccountCard(account?.name ?? "", account?.balance ?? 0);
+          return _AccountCard(account?.name ?? "", account?.balance ?? 0, () {
+            setState(() {
+              leftSideSelector = 1;
+              _filterAllController?.text = account?.name ?? "";
+            });
+          });
         });
   }
 
@@ -964,7 +969,6 @@ class _MainState extends State<Main> {
                       TextButton(
                           child: Text("OK"),
                           onPressed: () {
-                            print(_accountNameController?.text);
                             if (_accountNameController?.text.isNotEmpty ??
                                 false) {
                               Navigator.of(context)
@@ -999,7 +1003,6 @@ class _MainState extends State<Main> {
                       TextButton(
                           child: Text("OK"),
                           onPressed: () {
-                            print(_accountNameController?.text);
                             if (_accountNameController?.text.isNotEmpty ??
                                 false) {
                               Navigator.of(context)
@@ -2127,8 +2130,9 @@ class _MainState extends State<Main> {
 class _AccountCard extends StatelessWidget {
   final String name;
   final int balance;
+  final VoidCallback onClickFilterButton;
 
-  _AccountCard(this.name, this.balance);
+  _AccountCard(this.name, this.balance, this.onClickFilterButton);
 
   @override
   Widget build(BuildContext context) {
@@ -2136,19 +2140,29 @@ class _AccountCard extends StatelessWidget {
         color: Colors.green[500],
         child: Padding(
           padding: const EdgeInsets.all(4.0),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Text(this.name, style: TextStyle(color: Colors.white)),
-                ],
+              Expanded(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Text(this.name, style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(processMoney(this.balance),
+                            style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  Text(processMoney(this.balance),
-                      style: TextStyle(color: Colors.white)),
-                ],
-              ),
+              IconButton(
+                  iconSize: 14,
+                  onPressed: onClickFilterButton,
+                  icon: Icon(Icons.filter_alt))
             ],
           ),
         ));
