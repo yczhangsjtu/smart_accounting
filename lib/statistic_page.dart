@@ -20,7 +20,15 @@ class _StatisticalPageState extends State<StatisticalPage> {
   Widget build(BuildContext context) {
     return Container(
       child: Column(children: [
-        Text("Sum: ${processMoney(widget.analyzedAccountData?.sum ?? 0)}")
+        Text(
+            "Current Sum: ${processMoney(widget.analyzedAccountData?.sum ?? 0)}"),
+        Text(
+            "Fixed Investment Sum: ${processMoney(widget.analyzedAccountData?.fixedInvestmentSum ?? 0)}"),
+        Text(
+            "Fluctuate Investment Sum: ${processMoney(widget.analyzedAccountData?.fluctuateInvestimentSum ?? 0)}"),
+        Text(
+            "Fluctuate Current Sum: ${processMoney(widget.analyzedAccountData?.fluctuateCurrentSum ?? 0)}"),
+        Text("Total: ${processMoney(widget.analyzedAccountData?.total ?? 0)}")
       ]),
     );
   }

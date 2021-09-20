@@ -153,8 +153,20 @@ class AnalyzedAccountData {
   final List<FixedInvestmentAccount> fixedInvestments;
   final List<FluctuateInvestmentAccount> fluctuateInvestments;
   final int sum;
-  AnalyzedAccountData(this.accounts, this.fixedInvestments,
-      this.fluctuateInvestments, this.sum);
+  final int fixedInvestmentSum;
+  final int fluctuateInvestimentSum;
+  final int fluctuateCurrentSum;
+  final int total;
+  AnalyzedAccountData(
+    this.accounts,
+    this.fixedInvestments,
+    this.fluctuateInvestments,
+    this.sum,
+    this.fixedInvestmentSum,
+    this.fluctuateInvestimentSum,
+    this.fluctuateCurrentSum,
+    this.total,
+  );
 }
 
 AnalyzedAccountData? analyze(AccountData? accountData) {
@@ -204,8 +216,11 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
   accounts.add(Account("Sum", sum));
   List<FixedInvestmentAccount> fixedInvestments = [];
   List<FluctuateInvestmentAccount> fluctuateInvestments = [];
+  int fixedInvestimentSum = 0,
+      fluctuateInvestimentSum = 0,
+      fluctuateCurrentSum = 0;
   for (var investment in investmentBalances.entries) {
-    if (investment.value.type == "fixed")
+    if (investment.value.type == "fixed") {
       fixedInvestments.add(FixedInvestmentAccount(
           investment.value.name,
           investment.value.investedAmount,
@@ -214,15 +229,26 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
           DateTime.tryParse(investment.value.endDate),
           investment.value.rate,
           investment.value.interestBeforeEnd));
-    else
+      fixedInvestimentSum += investment.value.investedAmount;
+    } else {
       fluctuateInvestments.add(FluctuateInvestmentAccount(
           investment.value.name,
           investment.value.investedAmount,
           investmentIndices[investment.value.name]!,
           (investment.value.currentValue * 100).round()));
+      fluctuateInvestimentSum += investment.value.investedAmount;
+      fluctuateCurrentSum += (investment.value.currentValue * 100).round();
+    }
   }
   return AnalyzedAccountData(
-      accounts, fixedInvestments, fluctuateInvestments, sum);
+      accounts,
+      fixedInvestments,
+      fluctuateInvestments,
+      sum,
+      fixedInvestimentSum,
+      fluctuateInvestimentSum,
+      fluctuateCurrentSum,
+      sum + fixedInvestimentSum + fluctuateCurrentSum);
 }
 
 enum Field {
