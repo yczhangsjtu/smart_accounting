@@ -152,8 +152,9 @@ class AnalyzedAccountData {
   final List<Account> accounts;
   final List<FixedInvestmentAccount> fixedInvestments;
   final List<FluctuateInvestmentAccount> fluctuateInvestments;
-  AnalyzedAccountData(
-      this.accounts, this.fixedInvestments, this.fluctuateInvestments);
+  final int sum;
+  AnalyzedAccountData(this.accounts, this.fixedInvestments,
+      this.fluctuateInvestments, this.sum);
 }
 
 AnalyzedAccountData? analyze(AccountData? accountData) {
@@ -220,7 +221,8 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
           investmentIndices[investment.value.name]!,
           (investment.value.currentValue * 100).round()));
   }
-  return AnalyzedAccountData(accounts, fixedInvestments, fluctuateInvestments);
+  return AnalyzedAccountData(
+      accounts, fixedInvestments, fluctuateInvestments, sum);
 }
 
 enum Field {

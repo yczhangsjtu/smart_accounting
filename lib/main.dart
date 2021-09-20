@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_accounting/date_time_utils.dart';
 import 'package:smart_accounting/investment_page.dart';
+import 'package:smart_accounting/statistic_page.dart';
 import 'package:smart_accounting/utils.dart';
 import 'storage.dart';
 import 'data.dart';
@@ -80,6 +82,7 @@ class _MainState extends State<Main> {
   TextEditingController? _updateSubcategoryController;
   TextEditingController? _updateCommentController;
   TextEditingController? _updateResetController;
+  TextEditingController? _smartTextController;
   int updateTransactionType = 0;
 
   int sortFixedInvestmentColumn = 2;
@@ -125,6 +128,7 @@ class _MainState extends State<Main> {
     _updateSubcategoryController = TextEditingController();
     _updateCommentController = TextEditingController();
     _updateResetController = TextEditingController();
+    _smartTextController = TextEditingController();
 
     _accountNameController = TextEditingController();
   }
@@ -202,6 +206,7 @@ class _MainState extends State<Main> {
     _updateSubcategoryController?.dispose();
     _updateCommentController?.dispose();
     _updateResetController?.dispose();
+    _smartTextController?.dispose();
 
     _accountNameController?.dispose();
 
@@ -293,7 +298,7 @@ class _MainState extends State<Main> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(title: _buildTitleBar()),
         body: TabBarView(
@@ -345,6 +350,9 @@ class _MainState extends State<Main> {
                 setState(() {});
               },
             ),
+            StatisticalPage(
+                accountData: _accountData,
+                analyzedAccountData: _analyzedAccountData),
           ],
         ),
       ),
@@ -356,11 +364,12 @@ class _MainState extends State<Main> {
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Container(
-          width: 300,
+          width: 450,
           child: TabBar(
             tabs: [
               Tab(icon: Text("Transactions")),
               Tab(icon: Text("Investments")),
+              Tab(icon: Text("Statistics")),
             ],
           ),
         ),
@@ -858,8 +867,52 @@ class _MainState extends State<Main> {
               }),
           _buildDeleteButton(),
         ],
-      )
+      ),
+      _buildSmartTextArea(),
+      Wrap(
+        children: [
+          TextButton(
+              child: Text("Parse"),
+              onPressed: () {
+                final dateTime =
+                    FixedTime.fromString(_smartTextController?.text ?? "");
+                print(dateTime);
+                if (dateTime != null) {
+                  final todayDate =
+                      DateTimeUtils.yearMonthDayFromInt(dateTime.day);
+                  int todayOfMonth = todayDate! % 100;
+                  int todayMonth = (todayDate % 10000) ~/ 100;
+                  int year = todayDate ~/ 10000;
+                  updateDate = DateTime(year, todayMonth, todayOfMonth);
+                  if (dateTime.start != null) {
+                    updateTime = TimeOfDay(
+                        hour: dateTime.start! ~/ 60,
+                        minute: dateTime.start! % 60);
+                  }
+                }
+                setState(() {});
+              }),
+          TextButton(
+              child: Text("Clear"),
+              onPressed: () {
+                _smartTextController?.text = "";
+                setState(() {});
+              }),
+        ],
+      ),
     ]);
+  }
+
+  Widget _buildSmartTextArea() {
+    return TextField(
+      controller: _smartTextController,
+      maxLines: null,
+      decoration: InputDecoration(
+          hintText: "Input time string",
+          border: OutlineInputBorder(),
+          isCollapsed: true,
+          contentPadding: EdgeInsets.all(8.0)),
+    );
   }
 
   Widget _buildRightSide() {
