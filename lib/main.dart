@@ -1211,11 +1211,22 @@ class _MainState extends State<Main> {
                         child: Text(
                             transactionTypeToString(transaction.entryType))),
                     onTap: () {
-                  updateDate = DateTime.parse(transaction.time);
-                  updateTime = TimeOfDay.fromDateTime(updateDate);
+                  // updateDate = DateTime.parse(transaction.time);
+                  // updateTime = TimeOfDay.fromDateTime(updateDate);
                   _updateFromAccountController?.text = transaction.outAccount;
+                  _updateFromAmountController?.text =
+                      transaction.entryType == 0 || transaction.entryType == 2
+                          ? moneyToString(transaction.outAmount)
+                          : "";
                   _updateToAccountController?.text = transaction.inAccount;
+                  _updateToAmountController?.text =
+                      transaction.entryType == 1 || transaction.entryType == 2
+                          ? moneyToString(transaction.inAmount)
+                          : "";
                   updateTransactionType = transaction.entryType;
+                  _updateCategoryController?.text = transaction.category;
+                  _updateSubcategoryController?.text = transaction.subcategory;
+                  _updateCommentController?.text = transaction.comment;
                   setState(() {});
                 }),
                 DataCell(
