@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:core';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'data.dart';
@@ -148,10 +149,26 @@ class FluctuateInvestmentAccount {
   }
 }
 
+class CategoryValue {
+  String categoryName = "";
+  int value = 0;
+  CategoryValue(this.categoryName);
+}
+
+class CategorySubcategoryValues {
+  String categoryName = "";
+  List<CategoryValue> subcategorySums = [];
+  CategorySubcategoryValues(this.categoryName);
+}
+
 class AnalyzedAccountData {
   final List<Account> accounts;
   final List<FixedInvestmentAccount> fixedInvestments;
   final List<FluctuateInvestmentAccount> fluctuateInvestments;
+  final List<CategoryValue> categoryPaymentSums;
+  final List<CategorySubcategoryValues> subcategoryPaymentSums;
+  final List<CategoryValue> categoryReceiveSums;
+  final List<CategorySubcategoryValues> subcategoryReceiveSums;
   final int sum;
   final int fixedInvestmentSum;
   final int fluctuateInvestimentSum;
@@ -161,6 +178,10 @@ class AnalyzedAccountData {
     this.accounts,
     this.fixedInvestments,
     this.fluctuateInvestments,
+    this.categoryPaymentSums,
+    this.subcategoryPaymentSums,
+    this.categoryReceiveSums,
+    this.subcategoryReceiveSums,
     this.sum,
     this.fixedInvestmentSum,
     this.fluctuateInvestimentSum,
@@ -174,6 +195,10 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
   Map<String, int> balances = {};
   Map<String, Investment> investmentBalances = {};
   Map<String, int> investmentIndices = {};
+  Map<String, CategoryValue> categoryPaymentSums = {};
+  Map<String, CategorySubcategoryValues> subcategoryPaymentSums = {};
+  Map<String, CategoryValue> categoryReceiveSums = {};
+  Map<String, CategorySubcategoryValues> subcategoryReceiveSums = {};
   for (int i = 0; i < accountData.investments.length; i++) {
     final investment = accountData.investments[i];
     investment.investedAmount = 0;
@@ -203,8 +228,51 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
         balances[transaction.outAccount] = currentValue - transaction.outAmount;
       }
     }
-    if (transactionTypeToString(transaction.entryType) == "reset") {
+    final transactionType = transactionTypeToString(transaction.entryType);
+    if (transactionType == "reset") {
       balances[transaction.outAccount] = transaction.resetTo;
+    } else if (transactionType == "payment") {
+      if (!categoryPaymentSums.containsKey(transaction.category)) {
+        categoryPaymentSums[transaction.category] =
+            CategoryValue(transaction.category);
+      }
+      categoryPaymentSums[transaction.category]?.value += transaction.outAmount;
+      if (transaction.subcategory.isNotEmpty) {
+        if (!subcategoryPaymentSums.containsKey(transaction.category)) {
+          subcategoryPaymentSums[transaction.category] =
+              CategorySubcategoryValues(transaction.category);
+        }
+        var subcategorySums =
+            subcategoryPaymentSums[transaction.category]!.subcategorySums;
+        var index = subcategorySums.indexWhere((subcategoryValue) =>
+            subcategoryValue.categoryName == transaction.subcategory);
+        if (index == -1) {
+          subcategorySums.add(CategoryValue(transaction.subcategory));
+          index = subcategorySums.length - 1;
+        }
+        subcategorySums[index].value += transaction.outAmount;
+      }
+    } else if (transactionType == "receive") {
+      if (!categoryReceiveSums.containsKey(transaction.category)) {
+        categoryReceiveSums[transaction.category] =
+            CategoryValue(transaction.category);
+      }
+      categoryReceiveSums[transaction.category]?.value += transaction.inAmount;
+      if (transaction.subcategory.isNotEmpty) {
+        if (!subcategoryReceiveSums.containsKey(transaction.category)) {
+          subcategoryReceiveSums[transaction.category] =
+              CategorySubcategoryValues(transaction.category);
+        }
+        var subcategorySums =
+            subcategoryReceiveSums[transaction.category]!.subcategorySums;
+        var index = subcategorySums.indexWhere((subcategoryValue) =>
+            subcategoryValue.categoryName == transaction.subcategory);
+        if (index == -1) {
+          subcategorySums.add(CategoryValue(transaction.subcategory));
+          index = subcategorySums.length - 1;
+        }
+        subcategorySums[index].value += transaction.inAmount;
+      }
     }
   }
   List<Account> accounts = [];
@@ -244,6 +312,10 @@ AnalyzedAccountData? analyze(AccountData? accountData) {
       accounts,
       fixedInvestments,
       fluctuateInvestments,
+      categoryPaymentSums.values.toList(),
+      subcategoryPaymentSums.values.toList(),
+      categoryReceiveSums.values.toList(),
+      subcategoryReceiveSums.values.toList(),
       sum,
       fixedInvestimentSum,
       fluctuateInvestimentSum,
