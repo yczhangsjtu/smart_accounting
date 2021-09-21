@@ -925,7 +925,7 @@ class _InvestmentLeftSideState extends State<_InvestmentLeftSide> {
             ? Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(children: [
-                  Container(width: 50, child: Text("Start")),
+                  Container(width: 35, child: Text("Start")),
                   TextButton(
                       child: Text(formatDate(widget.updateInvestmentStart)),
                       onPressed: widget.onChangeInvestmentStart)
@@ -936,7 +936,7 @@ class _InvestmentLeftSideState extends State<_InvestmentLeftSide> {
             ? Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(children: [
-                  Container(width: 50, child: Text("End")),
+                  Container(width: 35, child: Text("End")),
                   TextButton(
                       child: Text(widget.updateInvestmentEnd == null
                           ? "Unspecified"

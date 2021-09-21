@@ -101,7 +101,7 @@ class AccountData {
   AccountData(this.categories, this.investments, this.transactions);
 
   @JsonKey(required: true)
-  Map<String, String> categories;
+  List<List<String>> categories;
 
   @JsonKey(required: true)
   List<Investment> investments;

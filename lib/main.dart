@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:smart_accounting/date_time_utils.dart';
 import 'package:smart_accounting/investment_page.dart';
 import 'package:smart_accounting/statistic_page.dart';
+import 'package:smart_accounting/settings_page.dart';
 import 'package:smart_accounting/utils.dart';
 import 'storage.dart';
 import 'data.dart';
@@ -298,7 +299,7 @@ class _MainState extends State<Main> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(title: _buildTitleBar()),
         body: TabBarView(
@@ -353,6 +354,9 @@ class _MainState extends State<Main> {
             StatisticalPage(
                 accountData: _accountData,
                 analyzedAccountData: _analyzedAccountData),
+            SettingsPage(
+                accountData: _accountData,
+                analyzedAccountData: _analyzedAccountData),
           ],
         ),
       ),
@@ -364,12 +368,13 @@ class _MainState extends State<Main> {
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Container(
-          width: 450,
+          width: 600,
           child: TabBar(
             tabs: [
               Tab(icon: Text("Transactions")),
               Tab(icon: Text("Investments")),
               Tab(icon: Text("Statistics")),
+              Tab(icon: Text("Settings")),
             ],
           ),
         ),

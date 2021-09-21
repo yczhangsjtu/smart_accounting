@@ -90,9 +90,9 @@ Future readAlipayData(AccountData? accountData, String account) async {
 
       String category = '其他';
       String subcategory = '';
-      for (var entry in accountData.categories.entries) {
-        final keyword = entry.key;
-        final value = entry.value;
+      for (var entry in accountData.categories) {
+        final keyword = entry[0];
+        final value = entry[1];
         int loc = comment.indexOf(keyword);
         if (loc >= 0) {
           loc = value.indexOf("-");
@@ -195,9 +195,9 @@ Future readWechatData(AccountData? accountData, String account) async {
 
       String category = '其他';
       String subcategory = '';
-      for (var entry in accountData.categories.entries) {
-        final keyword = entry.key;
-        final value = entry.value;
+      for (var entry in accountData.categories) {
+        final keyword = entry[0];
+        final value = entry[1];
         int loc = comment.indexOf(keyword);
         if (loc >= 0) {
           loc = value.indexOf("-");

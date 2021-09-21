@@ -7,8 +7,10 @@ part of 'data.dart';
 // **************************************************************************
 
 Transaction _$TransactionFromJson(Map<String, dynamic> json) {
-  $checkKeys(json,
-      requiredKeys: const ['time', 'entryType', 'category', 'timestamp']);
+  $checkKeys(
+    json,
+    requiredKeys: const ['time', 'entryType', 'category', 'timestamp'],
+  );
   return Transaction(
     json['time'] as String,
     json['outAccount'] as String? ?? '',
@@ -42,7 +44,10 @@ Map<String, dynamic> _$TransactionToJson(Transaction instance) =>
     };
 
 Investment _$InvestmentFromJson(Map<String, dynamic> json) {
-  $checkKeys(json, requiredKeys: const ['name', 'type']);
+  $checkKeys(
+    json,
+    requiredKeys: const ['name', 'type'],
+  );
   return Investment(
     json['name'] as String,
     json['type'] as String,
@@ -66,10 +71,14 @@ Map<String, dynamic> _$InvestmentToJson(Investment instance) =>
     };
 
 AccountData _$AccountDataFromJson(Map<String, dynamic> json) {
-  $checkKeys(json,
-      requiredKeys: const ['categories', 'investments', 'transactions']);
+  $checkKeys(
+    json,
+    requiredKeys: const ['categories', 'investments', 'transactions'],
+  );
   return AccountData(
-    Map<String, String>.from(json['categories'] as Map),
+    (json['categories'] as List<dynamic>)
+        .map((e) => (e as List<dynamic>).map((e) => e as String).toList())
+        .toList(),
     (json['investments'] as List<dynamic>)
         .map((e) => Investment.fromJson(e as Map<String, dynamic>))
         .toList(),
